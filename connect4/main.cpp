@@ -167,7 +167,7 @@ void showEndGamePopup(sf::RenderWindow &window, const std::string &message, sf::
 
 int main() {
     // Adjust window size to fit the grid
-    sf::RenderWindow window(sf::VideoMode(COLS * CELL_SIZE, ROWS * CELL_SIZE), "Puissance 4");
+    sf::RenderWindow window(sf::VideoMode(COLS * CELL_SIZE, ROWS * CELL_SIZE), "Connect 4");
 
     sf::Font font;
     if (!font.loadFromFile("GOODDP__.TTF")) {

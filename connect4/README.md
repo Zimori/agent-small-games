@@ -1,4 +1,4 @@
-# Puissance 4 (Connect Four)
+# Connect Four
 
 A simple **Connect Four** game implemented in C++ using the **SFML** library for graphics.
 
@@ -21,7 +21,7 @@ A simple **Connect Four** game implemented in C++ using the **SFML** library for
 
    ```bash
    git clone git@github.com-Zimori:Zimori/agent-small-games.git
-   cd agent-small-games/puissance4
+   cd agent-small-games/connect4
    ```
 
 2. Install SFML (if not already installed):
@@ -33,13 +33,13 @@ A simple **Connect Four** game implemented in C++ using the **SFML** library for
 3. Compile the game:
 
    ```bash
-   g++ main.cpp -o puissance4 -lsfml-graphics -lsfml-window -lsfml-system
+   g++ main.cpp -o connect4 -lsfml-graphics -lsfml-window -lsfml-system
    ```
 
 4. Run the game:
 
    ```bash
-   ./puissance4
+   ./connect4
    ```
 
 ## How to Play
@@ -61,7 +61,7 @@ A simple **Connect Four** game implemented in C++ using the **SFML** library for
 
 ```
 agent-small-games/
-└── puissance4/
+└── connect4/
     ├── GOODDP__.TTF    # Font file for text rendering
     ├── main.cpp        # Main game logic
     └── README.md       # Project documentation

@@ -12,7 +12,7 @@ The development process for these games follows a unique approach:
 
 ## Current Games
 
-- **Puissance 4 (Connect Four)**: A two-player Connect Four game implemented in C++ using the SFML library for graphics. [Learn more](puissance4/README.md)
+- **Connect Four**: A two-player Connect Four game implemented in C++ using the SFML library for graphics. [Learn more](connect4/README.md)
 
 ## How It Works
 
