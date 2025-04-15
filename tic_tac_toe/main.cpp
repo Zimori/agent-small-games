@@ -6,24 +6,34 @@
 const int WINDOW_SIZE = 600;
 const int GRID_SIZE = 3;
 const int CELL_SIZE = WINDOW_SIZE / GRID_SIZE;
-const std::string FONT_PATH = "../extern/fonts/GOODDP__.TTF";
+const std::string FONT_PATH = "extern/fonts/PixelatedElegance.ttf";
 
-enum class Player { None, X, O };
+enum class Player
+{
+    None,
+    X,
+    O
+};
 
-class TicTacToe {
+class TicTacToe
+{
 public:
-    TicTacToe() {
+    TicTacToe()
+    {
         reset();
     }
 
-    void reset() {
+    void reset()
+    {
         board.fill(Player::None);
         currentPlayer = Player::X;
         gameOver = false;
     }
 
-    bool makeMove(int row, int col) {
-        if (gameOver || board[row * GRID_SIZE + col] != Player::None) {
+    bool makeMove(int row, int col)
+    {
+        if (gameOver || board[row * GRID_SIZE + col] != Player::None)
+        {
             return false;
         }
         board[row * GRID_SIZE + col] = currentPlayer;
@@ -32,15 +42,18 @@ public:
         return true;
     }
 
-    Player getCell(int row, int col) const {
+    Player getCell(int row, int col) const
+    {
         return board[row * GRID_SIZE + col];
     }
 
-    Player getWinner() const {
+    Player getWinner() const
+    {
         return winner;
     }
 
-    bool isGameOver() const {
+    bool isGameOver() const
+    {
         return gameOver;
     }
 
@@ -50,38 +63,49 @@ private:
     Player winner = Player::None;
     bool gameOver = false;
 
-    void checkGameOver() {
+    void checkGameOver()
+    {
         // Check rows and columns
-        for (int i = 0; i < GRID_SIZE; ++i) {
-            if (checkLine(i * GRID_SIZE, 1) || checkLine(i, GRID_SIZE)) {
+        for (int i = 0; i < GRID_SIZE; ++i)
+        {
+            if (checkLine(i * GRID_SIZE, 1) || checkLine(i, GRID_SIZE))
+            {
                 gameOver = true;
                 return;
             }
         }
 
         // Check diagonals
-        if (checkLine(0, GRID_SIZE + 1) || checkLine(GRID_SIZE - 1, GRID_SIZE - 1)) {
+        if (checkLine(0, GRID_SIZE + 1) || checkLine(GRID_SIZE - 1, GRID_SIZE - 1))
+        {
             gameOver = true;
             return;
         }
 
         // Check for draw
-        gameOver = std::all_of(board.begin(), board.end(), [](Player p) { return p != Player::None; });
+        gameOver = std::all_of(board.begin(), board.end(), [](Player p)
+                               { return p != Player::None; });
     }
 
-    bool checkLine(int start, int step) {
+    bool checkLine(int start, int step)
+    {
         Player first = board[start];
-        if (first == Player::None) return false;
-        for (int i = 1; i < GRID_SIZE; ++i) {
-            if (board[start + i * step] != first) return false;
+        if (first == Player::None)
+            return false;
+        for (int i = 1; i < GRID_SIZE; ++i)
+        {
+            if (board[start + i * step] != first)
+                return false;
         }
         winner = first;
         return true;
     }
 };
 
-void drawGrid(sf::RenderWindow& window) {
-    for (int i = 1; i < GRID_SIZE; ++i) {
+void drawGrid(sf::RenderWindow &window)
+{
+    for (int i = 1; i < GRID_SIZE; ++i)
+    {
         sf::RectangleShape line(sf::Vector2f(WINDOW_SIZE, 2));
         line.setPosition(0, i * CELL_SIZE);
         line.setFillColor(sf::Color::Black); // Changed to black for visibility
@@ -94,9 +118,11 @@ void drawGrid(sf::RenderWindow& window) {
     }
 }
 
-void drawBoard(sf::RenderWindow& window, const TicTacToe& game) {
+void drawBoard(sf::RenderWindow &window, const TicTacToe &game)
+{
     sf::Font font;
-    if (!font.loadFromFile(FONT_PATH)) {
+    if (!font.loadFromFile(FONT_PATH))
+    {
         std::cerr << "Failed to load font!\n";
         return;
     }
@@ -106,10 +132,13 @@ void drawBoard(sf::RenderWindow& window, const TicTacToe& game) {
     text.setCharacterSize(CELL_SIZE / 2);
     text.setFillColor(sf::Color::Black);
 
-    for (int row = 0; row < GRID_SIZE; ++row) {
-        for (int col = 0; col < GRID_SIZE; ++col) {
+    for (int row = 0; row < GRID_SIZE; ++row)
+    {
+        for (int col = 0; col < GRID_SIZE; ++col)
+        {
             Player cell = game.getCell(row, col);
-            if (cell == Player::None) continue;
+            if (cell == Player::None)
+                continue;
 
             text.setString(cell == Player::X ? "X" : "O");
             text.setPosition(col * CELL_SIZE + CELL_SIZE / 4, row * CELL_SIZE + CELL_SIZE / 4);
@@ -118,7 +147,8 @@ void drawBoard(sf::RenderWindow& window, const TicTacToe& game) {
     }
 }
 
-void showEndGamePopup(sf::RenderWindow &window, const std::string &message, sf::Font &font, TicTacToe &game) {
+void showEndGamePopup(sf::RenderWindow &window, const std::string &message, sf::Font &font, TicTacToe &game)
+{
     sf::RectangleShape popup(sf::Vector2f(400, 200));
     popup.setFillColor(sf::Color(50, 50, 50));
     popup.setOutlineColor(sf::Color::White);
@@ -146,23 +176,29 @@ void showEndGamePopup(sf::RenderWindow &window, const std::string &message, sf::
     quitButton.setFillColor(sf::Color::Red);
     quitButton.setPosition(popup.getPosition().x + 250, popup.getPosition().y + 120);
 
-    while (true) {
+    while (true)
+    {
         sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+            {
                 window.close();
                 return;
             }
 
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+            {
                 sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
 
-                if (restartButton.getGlobalBounds().contains(mousePos)) {
+                if (restartButton.getGlobalBounds().contains(mousePos))
+                {
                     game.reset();
                     return;
                 }
 
-                if (quitButton.getGlobalBounds().contains(mousePos)) {
+                if (quitButton.getGlobalBounds().contains(mousePos))
+                {
                     window.close();
                     return;
                 }
@@ -180,29 +216,38 @@ void showEndGamePopup(sf::RenderWindow &window, const std::string &message, sf::
     }
 }
 
-int main() {
+int main()
+{
     sf::RenderWindow window(sf::VideoMode(WINDOW_SIZE, WINDOW_SIZE), "Tic-Tac-Toe");
     TicTacToe game;
 
+    std::cout<<"font is " <<FONT_PATH<<std::endl;
     sf::Font font;
-    if (!font.loadFromFile(FONT_PATH)) {
-        std::cerr << "Failed to load font!\n";
+    if (!font.loadFromFile(FONT_PATH))
+    {
+        std::cerr << "Failed to load font from: " << FONT_PATH << "\n";
         return -1;
     }
 
-    while (window.isOpen()) {
+    while (window.isOpen())
+    {
         sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+            {
                 window.close();
-            } else if (event.type == sf::Event::MouseButtonPressed && !game.isGameOver()) {
+            }
+            else if (event.type == sf::Event::MouseButtonPressed && !game.isGameOver())
+            {
                 int row = event.mouseButton.y / CELL_SIZE;
                 int col = event.mouseButton.x / CELL_SIZE;
                 game.makeMove(row, col);
 
-                if (game.isGameOver()) {
-                    std::string message = (game.getWinner() == Player::X) ? "Player X won!" :
-                                          (game.getWinner() == Player::O) ? "Player O won!" : "It's a draw!";
+                if (game.isGameOver())
+                {
+                    std::string message = (game.getWinner() == Player::X) ? "Player X won!" : (game.getWinner() == Player::O) ? "Player O won!"
+                                                                                                                              : "It's a draw!";
                     showEndGamePopup(window, message, font, game);
                 }
             }

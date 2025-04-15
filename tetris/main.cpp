@@ -5,11 +5,12 @@
 #include <cstdlib>
 #include <map>
 #include <string>
+#include <iostream>
 
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int TILE_SIZE = 30;
-const std::string FONT_PATH = "../extern/fonts/GOODDP__.TTF";
+const std::string FONT_PATH = "extern/fonts/PixelatedElegance.ttf";
 
 // Update Tetrimino shapes to include all standard Tetris pieces
 const std::array<std::array<int, 4>, 7> TETRIMINOS = {{
@@ -25,15 +26,16 @@ const std::array<std::array<int, 4>, 7> TETRIMINOS = {{
 // Add color mapping for Tetriminos
 const std::array<sf::Color, 7> TETRIMINO_COLORS = {
     sf::Color::Cyan, sf::Color::Red, sf::Color::Green, sf::Color::Magenta,
-    sf::Color::Blue, sf::Color::Yellow, sf::Color::White
-};
+    sf::Color::Blue, sf::Color::Yellow, sf::Color::White};
 
-struct Tetrimino {
+struct Tetrimino
+{
     std::array<int, 4> blocks;
     int x, y; // Position of the Tetrimino on the grid
     int color;
 
-    Tetrimino(int shapeIndex) {
+    Tetrimino(int shapeIndex)
+    {
         blocks = TETRIMINOS[shapeIndex];
         x = GRID_WIDTH / 2 - 1;
         y = 0;
@@ -41,40 +43,49 @@ struct Tetrimino {
     }
 };
 
-bool isValidPosition(const Tetrimino& tetrimino, const std::vector<std::vector<int>>& grid) {
-    for (int i = 0; i < 4; ++i) {
+bool isValidPosition(const Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid)
+{
+    for (int i = 0; i < 4; ++i)
+    {
         int x = tetrimino.x + tetrimino.blocks[i] % 2;
         int y = tetrimino.y + tetrimino.blocks[i] / 2;
-        if (x < 0 || x >= GRID_WIDTH || y >= GRID_HEIGHT || (y >= 0 && grid[y][x] != 0)) {
+        if (x < 0 || x >= GRID_WIDTH || y >= GRID_HEIGHT || (y >= 0 && grid[y][x] != 0))
+        {
             return false;
         }
     }
     return true;
 }
 
-void placeTetrimino(const Tetrimino& tetrimino, std::vector<std::vector<int>>& grid) {
-    for (int i = 0; i < 4; ++i) {
+void placeTetrimino(const Tetrimino &tetrimino, std::vector<std::vector<int>> &grid)
+{
+    for (int i = 0; i < 4; ++i)
+    {
         int x = tetrimino.x + tetrimino.blocks[i] % 2;
         int y = tetrimino.y + tetrimino.blocks[i] / 2;
-        if (y >= 0) {
+        if (y >= 0)
+        {
             grid[y][x] = tetrimino.color;
         }
     }
 }
 
 // Add rotation logic for Tetriminos
-void rotateTetrimino(Tetrimino& tetrimino, const std::vector<std::vector<int>>& grid) {
+void rotateTetrimino(Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid)
+{
     Tetrimino temp = tetrimino;
     int pivotX = temp.blocks[1] % 2; // Use the second block as the pivot
     int pivotY = temp.blocks[1] / 2;
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
         int x = temp.blocks[i] % 2 - pivotX;
         int y = temp.blocks[i] / 2 - pivotY;
         temp.blocks[i] = (pivotX - y) + (pivotY + x) * 2; // Rotate 90 degrees clockwise
     }
 
-    if (isValidPosition(temp, grid)) {
+    if (isValidPosition(temp, grid))
+    {
         tetrimino = temp;
     }
 }
@@ -82,22 +93,27 @@ void rotateTetrimino(Tetrimino& tetrimino, const std::vector<std::vector<int>>& 
 // Add scoring system
 int score = 0;
 const std::map<int, int> SCORE_TABLE = {
-    {1, 40}, {2, 100}, {3, 300}, {4, 1200}
-};
+    {1, 40}, {2, 100}, {3, 300}, {4, 1200}};
 
 // Add line clearing logic
-void clearLines(std::vector<std::vector<int>>& grid) {
+void clearLines(std::vector<std::vector<int>> &grid)
+{
     int linesCleared = 0;
-    for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
+    for (int y = GRID_HEIGHT - 1; y >= 0; --y)
+    {
         bool isFullLine = true;
-        for (int x = 0; x < GRID_WIDTH; ++x) {
-            if (grid[y][x] == 0) {
+        for (int x = 0; x < GRID_WIDTH; ++x)
+        {
+            if (grid[y][x] == 0)
+            {
                 isFullLine = false;
                 break;
             }
         }
-        if (isFullLine) {
-            for (int row = y; row > 0; --row) {
+        if (isFullLine)
+        {
+            for (int row = y; row > 0; --row)
+            {
                 grid[row] = grid[row - 1];
             }
             grid[0] = std::vector<int>(GRID_WIDTH, 0);
@@ -105,7 +121,8 @@ void clearLines(std::vector<std::vector<int>>& grid) {
             ++linesCleared;
         }
     }
-    if (linesCleared > 0) {
+    if (linesCleared > 0)
+    {
         score += SCORE_TABLE.at(linesCleared);
     }
 }
@@ -116,7 +133,9 @@ int main()
     window.setFramerateLimit(60);
 
     sf::Font font;
-    if (!font.loadFromFile(FONT_PATH)) {
+    if (!font.loadFromFile(FONT_PATH))
+    {
+        std::cerr << "Failed to load font from: " << FONT_PATH << "\n";
         return -1; // Handle error if font fails to load
     }
 
@@ -145,19 +164,28 @@ int main()
             }
 
             // Update input handling to ensure only the Up arrow rotates the Tetrimino
-            if (event.type == sf::Event::KeyPressed) {
+            if (event.type == sf::Event::KeyPressed)
+            {
                 Tetrimino temp = currentTetrimino;
-                if (event.key.code == sf::Keyboard::Left) {
+                if (event.key.code == sf::Keyboard::Left)
+                {
                     temp.x -= 1;
-                } else if (event.key.code == sf::Keyboard::Right) {
+                }
+                else if (event.key.code == sf::Keyboard::Right)
+                {
                     temp.x += 1;
-                } else if (event.key.code == sf::Keyboard::Down) {
+                }
+                else if (event.key.code == sf::Keyboard::Down)
+                {
                     temp.y += 1;
-                } else if (event.key.code == sf::Keyboard::Up) {
+                }
+                else if (event.key.code == sf::Keyboard::Up)
+                {
                     rotateTetrimino(temp, grid);
                 }
 
-                if (event.key.code == sf::Keyboard::Up || isValidPosition(temp, grid)) {
+                if (event.key.code == sf::Keyboard::Up || isValidPosition(temp, grid))
+                {
                     currentTetrimino = temp;
                 }
             }
