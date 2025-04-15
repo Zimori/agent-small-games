@@ -28,66 +28,70 @@ const std::array<sf::Color, 7> TETRIMINO_COLORS = {
     sf::Color::Cyan, sf::Color::Red, sf::Color::Green, sf::Color::Magenta,
     sf::Color::Blue, sf::Color::Yellow, sf::Color::White};
 
-struct Tetrimino
-{
-    std::array<int, 4> blocks;
-    int x, y; // Position of the Tetrimino on the grid
-    int color;
-
-    Tetrimino(int shapeIndex)
-    {
-        blocks = TETRIMINOS[shapeIndex];
-        x = GRID_WIDTH / 2 - 1;
-        y = 0;
-        color = shapeIndex + 1; // Assign a unique color for each shape
-    }
+struct Tetrimino {
+    int shapeIndex;
+    int rotation; // 0, 1, 2, 3
+    int x, y;
+    Tetrimino(int shapeIndex_) : shapeIndex(shapeIndex_), rotation(0), x(GRID_WIDTH / 2 - 1), y(0) {}
 };
 
-bool isValidPosition(const Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid)
-{
-    for (int i = 0; i < 4; ++i)
-    {
-        int x = tetrimino.x + tetrimino.blocks[i] % 2;
-        int y = tetrimino.y + tetrimino.blocks[i] / 2;
-        if (x < 0 || x >= GRID_WIDTH || y >= GRID_HEIGHT || (y >= 0 && grid[y][x] != 0))
-        {
-            return false;
+// Helper to get rotated block positions
+std::array<sf::Vector2i, 4> getBlockPositions(const Tetrimino& t) {
+    std::array<sf::Vector2i, 4> positions;
+    for (int i = 0; i < 4; ++i) {
+        int px = TETRIMINOS[t.shapeIndex][i] % 2;
+        int py = TETRIMINOS[t.shapeIndex][i] / 2;
+        // Rotate around (1,1) as pivot
+        for (int r = 0; r < t.rotation; ++r) {
+            int tmp = px;
+            px = 1 - (py - 1);
+            py = tmp;
         }
+        positions[i] = sf::Vector2i(t.x + px, t.y + py);
+    }
+    return positions;
+}
+
+bool isValidPosition(const Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid) {
+    auto positions = getBlockPositions(tetrimino);
+    for (const auto& pos : positions) {
+        int x = pos.x, y = pos.y;
+        if (x < 0 || x >= GRID_WIDTH || y >= GRID_HEIGHT || (y >= 0 && grid[y][x] != 0))
+            return false;
     }
     return true;
 }
 
-void placeTetrimino(const Tetrimino &tetrimino, std::vector<std::vector<int>> &grid)
-{
-    for (int i = 0; i < 4; ++i)
-    {
-        int x = tetrimino.x + tetrimino.blocks[i] % 2;
-        int y = tetrimino.y + tetrimino.blocks[i] / 2;
-        if (y >= 0)
-        {
-            grid[y][x] = tetrimino.color;
-        }
+void placeTetrimino(const Tetrimino &tetrimino, std::vector<std::vector<int>> &grid) {
+    auto positions = getBlockPositions(tetrimino);
+    for (const auto& pos : positions) {
+        if (pos.y >= 0)
+            grid[pos.y][pos.x] = tetrimino.shapeIndex + 1;
     }
 }
 
-// Add rotation logic for Tetriminos
-void rotateTetrimino(Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid)
-{
+void rotateTetrimino(Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid) {
     Tetrimino temp = tetrimino;
-    int pivotX = temp.blocks[1] % 2; // Use the second block as the pivot
-    int pivotY = temp.blocks[1] / 2;
-
-    for (int i = 0; i < 4; ++i)
-    {
-        int x = temp.blocks[i] % 2 - pivotX;
-        int y = temp.blocks[i] / 2 - pivotY;
-        temp.blocks[i] = (pivotX - y) + (pivotY + x) * 2; // Rotate 90 degrees clockwise
-    }
-
-    if (isValidPosition(temp, grid))
-    {
+    temp.rotation = (temp.rotation + 1) % 4;
+    // Try normal rotation
+    if (isValidPosition(temp, grid)) {
         tetrimino = temp;
+        return;
     }
+    // Wall kick attempts: left, right, up
+    const std::array<sf::Vector2i, 5> kicks = {
+        sf::Vector2i(-1, 0), sf::Vector2i(1, 0), sf::Vector2i(0, -1), sf::Vector2i(-2, 0), sf::Vector2i(2, 0)
+    };
+    for (const auto& kick : kicks) {
+        Tetrimino kicked = temp;
+        kicked.x += kick.x;
+        kicked.y += kick.y;
+        if (isValidPosition(kicked, grid)) {
+            tetrimino = kicked;
+            return;
+        }
+    }
+    // If all fail, do not rotate
 }
 
 // Add scoring system
@@ -162,31 +166,28 @@ int main()
             {
                 window.close();
             }
-
-            // Update input handling to ensure only the Up arrow rotates the Tetrimino
             if (event.type == sf::Event::KeyPressed)
             {
                 Tetrimino temp = currentTetrimino;
                 if (event.key.code == sf::Keyboard::Left)
                 {
                     temp.x -= 1;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Right)
                 {
                     temp.x += 1;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Down)
                 {
                     temp.y += 1;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Up)
                 {
                     rotateTetrimino(temp, grid);
-                }
-
-                if (event.key.code == sf::Keyboard::Up || isValidPosition(temp, grid))
-                {
-                    currentTetrimino = temp;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
             }
         }
@@ -240,15 +241,12 @@ int main()
         }
 
         // Draw the current Tetrimino
-        for (int i = 0; i < 4; ++i)
-        {
-            int x = currentTetrimino.x + currentTetrimino.blocks[i] % 2;
-            int y = currentTetrimino.y + currentTetrimino.blocks[i] / 2;
-            if (y >= 0)
-            {
+        auto positions = getBlockPositions(currentTetrimino);
+        for (const auto& pos : positions) {
+            if (pos.y >= 0) {
                 sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
-                tile.setPosition(x * TILE_SIZE, y * TILE_SIZE);
-                tile.setFillColor(TETRIMINO_COLORS[currentTetrimino.color - 1]);
+                tile.setPosition(pos.x * TILE_SIZE, pos.y * TILE_SIZE);
+                tile.setFillColor(TETRIMINO_COLORS[currentTetrimino.shapeIndex]);
                 window.draw(tile);
             }
         }
