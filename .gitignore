@@ -1,0 +1,15 @@
+# Ignore build artifacts
+build/
+
+# Ignore binaries
+bin/
+
+# Ignore editor-specific files
+.vscode/
+.idea/
+*.iml
+
+# Ignore backup files
+*~
+*.bak
+
