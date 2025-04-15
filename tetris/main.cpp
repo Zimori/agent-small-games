@@ -4,10 +4,12 @@
 #include <ctime>
 #include <cstdlib>
 #include <map>
+#include <string>
 
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int TILE_SIZE = 30;
+const std::string FONT_PATH = "../extern/fonts/GOODDP__.TTF";
 
 // Update Tetrimino shapes to include all standard Tetris pieces
 const std::array<std::array<int, 4>, 7> TETRIMINOS = {{
@@ -112,6 +114,11 @@ int main()
 {
     sf::RenderWindow window(sf::VideoMode(GRID_WIDTH * TILE_SIZE, GRID_HEIGHT * TILE_SIZE), "Tetris");
     window.setFramerateLimit(60);
+
+    sf::Font font;
+    if (!font.loadFromFile(FONT_PATH)) {
+        return -1; // Handle error if font fails to load
+    }
 
     // Initialize grid
     std::vector<std::vector<int>> grid(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
@@ -220,10 +227,6 @@ int main()
 
         // Ensure score is displayed properly
         // Draw the score
-        sf::Font font;
-        if (!font.loadFromFile("GOODDP__.TTF")) {
-            // Handle error
-        }
         sf::Text scoreText;
         scoreText.setFont(font);
         scoreText.setString("Score: " + std::to_string(score));

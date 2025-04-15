@@ -3,10 +3,12 @@
 #include <vector>
 #include <locale>
 #include <codecvt>
+#include <string>
 
 const int ROWS = 6;
 const int COLS = 7;
 const int CELL_SIZE = 100;
+const std::string FONT_PATH = "../extern/fonts/GOODDP__.TTF";
 
 enum class Player { None, Player1, Player2 };
 
@@ -170,7 +172,7 @@ int main() {
     sf::RenderWindow window(sf::VideoMode(COLS * CELL_SIZE, ROWS * CELL_SIZE), "Connect 4");
 
     sf::Font font;
-    if (!font.loadFromFile("GOODDP__.TTF")) {
+    if (!font.loadFromFile(FONT_PATH)) {
         std::cerr << "Failed to load font!" << std::endl;
         return -1;
     }

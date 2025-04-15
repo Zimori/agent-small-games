@@ -1,10 +1,12 @@
 #include <SFML/Graphics.hpp>
 #include <array>
 #include <iostream>
+#include <string>
 
 const int WINDOW_SIZE = 600;
 const int GRID_SIZE = 3;
 const int CELL_SIZE = WINDOW_SIZE / GRID_SIZE;
+const std::string FONT_PATH = "../extern/fonts/GOODDP__.TTF";
 
 enum class Player { None, X, O };
 
@@ -94,7 +96,7 @@ void drawGrid(sf::RenderWindow& window) {
 
 void drawBoard(sf::RenderWindow& window, const TicTacToe& game) {
     sf::Font font;
-    if (!font.loadFromFile("GOODDP__.TTF")) {
+    if (!font.loadFromFile(FONT_PATH)) {
         std::cerr << "Failed to load font!\n";
         return;
     }
@@ -183,7 +185,7 @@ int main() {
     TicTacToe game;
 
     sf::Font font;
-    if (!font.loadFromFile("GOODDP__.TTF")) {
+    if (!font.loadFromFile(FONT_PATH)) {
         std::cerr << "Failed to load font!\n";
         return -1;
     }
