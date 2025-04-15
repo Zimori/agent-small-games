@@ -29,7 +29,13 @@ A simple **Tetris** game implemented in C++ using the **SFML** library for graph
    sudo apt-get install libsfml-dev
    ```
 
-3. Compile the game:
+3. Compile the game (recommended):
+
+   ```bash
+   make tetris
+   ```
+
+   Or compile manually:
 
    ```bash
    g++ main.cpp -o tetris -lsfml-graphics -lsfml-window -lsfml-system

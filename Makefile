@@ -51,6 +51,14 @@ $(CONNECT4_EXE): $(CONNECT4_OBJ) | $(BIN_DIR)
 $(TETRIS_EXE): $(TETRIS_OBJ) | $(BIN_DIR)
 	$(CXX) $< -o $@ $(LDFLAGS)
 
+# Individual game targets
+
+tic_tac_toe: $(TIC_TAC_TOE_EXE)
+
+connect4: $(CONNECT4_EXE)
+
+tetris: $(TETRIS_EXE)
+
 # Update clean target to remove executables from the bin directory
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)

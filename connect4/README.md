@@ -30,7 +30,13 @@ A simple **Connect Four** game implemented in C++ using the **SFML** library for
    sudo apt-get install libsfml-dev
    ```
 
-3. Compile the game:
+3. Compile the game (recommended):
+
+   ```bash
+   make connect4
+   ```
+
+   Or compile manually:
 
    ```bash
    g++ main.cpp -o connect4 -lsfml-graphics -lsfml-window -lsfml-system

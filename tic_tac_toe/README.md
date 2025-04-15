@@ -29,7 +29,13 @@ A simple **Tic-Tac-Toe** game implemented in C++ using the **SFML** library for 
    sudo apt-get install libsfml-dev
    ```
 
-3. Compile the game:
+3. Compile the game (recommended):
+
+   ```bash
+   make tic_tac_toe
+   ```
+
+   Or compile manually:
 
    ```bash
    g++ main.cpp -o tic_tac_toe -lsfml-graphics -lsfml-window -lsfml-system
