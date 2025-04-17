@@ -28,7 +28,8 @@ const std::array<sf::Color, 7> TETRIMINO_COLORS = {
     sf::Color::Cyan, sf::Color::Red, sf::Color::Green, sf::Color::Magenta,
     sf::Color::Blue, sf::Color::Yellow, sf::Color::White};
 
-struct Tetrimino {
+struct Tetrimino
+{
     int shapeIndex;
     int rotation; // 0, 1, 2, 3
     int x, y;
@@ -36,13 +37,16 @@ struct Tetrimino {
 };
 
 // Helper to get rotated block positions
-std::array<sf::Vector2i, 4> getBlockPositions(const Tetrimino& t) {
+std::array<sf::Vector2i, 4> getBlockPositions(const Tetrimino &t)
+{
     std::array<sf::Vector2i, 4> positions;
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
         int px = TETRIMINOS[t.shapeIndex][i] % 2;
         int py = TETRIMINOS[t.shapeIndex][i] / 2;
         // Rotate around (1,1) as pivot
-        for (int r = 0; r < t.rotation; ++r) {
+        for (int r = 0; r < t.rotation; ++r)
+        {
             int tmp = px;
             px = 1 - (py - 1);
             py = tmp;
@@ -52,9 +56,11 @@ std::array<sf::Vector2i, 4> getBlockPositions(const Tetrimino& t) {
     return positions;
 }
 
-bool isValidPosition(const Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid) {
+bool isValidPosition(const Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid)
+{
     auto positions = getBlockPositions(tetrimino);
-    for (const auto& pos : positions) {
+    for (const auto &pos : positions)
+    {
         int x = pos.x, y = pos.y;
         if (x < 0 || x >= GRID_WIDTH || y >= GRID_HEIGHT || (y >= 0 && grid[y][x] != 0))
             return false;
@@ -62,31 +68,37 @@ bool isValidPosition(const Tetrimino &tetrimino, const std::vector<std::vector<i
     return true;
 }
 
-void placeTetrimino(const Tetrimino &tetrimino, std::vector<std::vector<int>> &grid) {
+void placeTetrimino(const Tetrimino &tetrimino, std::vector<std::vector<int>> &grid)
+{
     auto positions = getBlockPositions(tetrimino);
-    for (const auto& pos : positions) {
+    for (const auto &pos : positions)
+    {
         if (pos.y >= 0)
             grid[pos.y][pos.x] = tetrimino.shapeIndex + 1;
     }
 }
 
-void rotateTetrimino(Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid) {
+void rotateTetrimino(Tetrimino &tetrimino, const std::vector<std::vector<int>> &grid)
+{
+    // Do not rotate the O (square) piece
+    if (tetrimino.shapeIndex == 6)
+        return;
     Tetrimino temp = tetrimino;
     temp.rotation = (temp.rotation + 1) % 4;
-    // Try normal rotation
-    if (isValidPosition(temp, grid)) {
+    if (isValidPosition(temp, grid))
+    {
         tetrimino = temp;
         return;
     }
-    // Wall kick attempts: left, right, up
     const std::array<sf::Vector2i, 5> kicks = {
-        sf::Vector2i(-1, 0), sf::Vector2i(1, 0), sf::Vector2i(0, -1), sf::Vector2i(-2, 0), sf::Vector2i(2, 0)
-    };
-    for (const auto& kick : kicks) {
+        sf::Vector2i(-1, 0), sf::Vector2i(1, 0), sf::Vector2i(0, -1), sf::Vector2i(-2, 0), sf::Vector2i(2, 0)};
+    for (const auto &kick : kicks)
+    {
         Tetrimino kicked = temp;
         kicked.x += kick.x;
         kicked.y += kick.y;
-        if (isValidPosition(kicked, grid)) {
+        if (isValidPosition(kicked, grid))
+        {
             tetrimino = kicked;
             return;
         }
@@ -133,7 +145,9 @@ void clearLines(std::vector<std::vector<int>> &grid)
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(GRID_WIDTH * TILE_SIZE, GRID_HEIGHT * TILE_SIZE), "Tetris");
+    // Extend the window width to fit the score display
+    const int SCORE_PANEL_WIDTH = 150;
+    sf::RenderWindow window(sf::VideoMode(GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE), "Tetris");
     window.setFramerateLimit(60);
 
     sf::Font font;
@@ -149,8 +163,9 @@ int main()
     // Initialize random seed
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    // Create the first Tetrimino
+    // Create the first Tetrimino and the next one
     Tetrimino currentTetrimino(std::rand() % 7);
+    Tetrimino nextTetrimino(std::rand() % 7);
 
     sf::Clock clock;
     float fallDelay = 0.5f; // Time between automatic falls
@@ -172,22 +187,26 @@ int main()
                 if (event.key.code == sf::Keyboard::Left)
                 {
                     temp.x -= 1;
-                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
+                    if (isValidPosition(temp, grid))
+                        currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Right)
                 {
                     temp.x += 1;
-                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
+                    if (isValidPosition(temp, grid))
+                        currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Down)
                 {
                     temp.y += 1;
-                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
+                    if (isValidPosition(temp, grid))
+                        currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Up)
                 {
                     rotateTetrimino(temp, grid);
-                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
+                    if (isValidPosition(temp, grid))
+                        currentTetrimino = temp;
                 }
             }
         }
@@ -211,8 +230,9 @@ int main()
                 // Clear completed lines
                 clearLines(grid);
 
-                // Spawn a new Tetrimino
-                currentTetrimino = Tetrimino(std::rand() % 7);
+                // Move nextTetrimino to current, and generate a new nextTetrimino
+                currentTetrimino = nextTetrimino;
+                nextTetrimino = Tetrimino(std::rand() % 7);
 
                 // Check for game over
                 if (!isValidPosition(currentTetrimino, grid))
@@ -242,8 +262,10 @@ int main()
 
         // Draw the current Tetrimino
         auto positions = getBlockPositions(currentTetrimino);
-        for (const auto& pos : positions) {
-            if (pos.y >= 0) {
+        for (const auto &pos : positions)
+        {
+            if (pos.y >= 0)
+            {
                 sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
                 tile.setPosition(pos.x * TILE_SIZE, pos.y * TILE_SIZE);
                 tile.setFillColor(TETRIMINO_COLORS[currentTetrimino.shapeIndex]);
@@ -251,15 +273,43 @@ int main()
             }
         }
 
-        // Ensure score is displayed properly
+        // Draw the score panel background
+        sf::RectangleShape scorePanel(sf::Vector2f(SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
+        scorePanel.setPosition(GRID_WIDTH * TILE_SIZE, 0);
+        scorePanel.setFillColor(sf::Color(30, 30, 30));
+        window.draw(scorePanel);
+
         // Draw the score
         sf::Text scoreText;
         scoreText.setFont(font);
-        scoreText.setString("Score: " + std::to_string(score));
+        // break line after "Score:", before the actual score
+        scoreText.setString("Score: \n" + std::to_string(score));
         scoreText.setCharacterSize(24);
         scoreText.setFillColor(sf::Color::White);
-        scoreText.setPosition(GRID_WIDTH * TILE_SIZE + 10, 10);
+        scoreText.setPosition(GRID_WIDTH * TILE_SIZE + 00, 30);
         window.draw(scoreText);
+
+        // Draw the label for next piece
+        sf::Text nextLabel;
+        nextLabel.setFont(font);
+        nextLabel.setString("Next:");
+        nextLabel.setCharacterSize(20);
+        nextLabel.setFillColor(sf::Color::White);
+        nextLabel.setPosition(GRID_WIDTH * TILE_SIZE + 20, 150);
+        window.draw(nextLabel);
+
+        // Center the next piece in the panel
+        int offsetX = GRID_WIDTH * TILE_SIZE + 40;
+        int offsetY = 200;
+        for (int i = 0; i < 4; ++i)
+        {
+            int px = TETRIMINOS[nextTetrimino.shapeIndex][i] % 2;
+            int py = TETRIMINOS[nextTetrimino.shapeIndex][i] / 2;
+            sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 4, TILE_SIZE - 4));
+            tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
+            tile.setFillColor(TETRIMINO_COLORS[nextTetrimino.shapeIndex]);
+            window.draw(tile);
+        }
 
         // Display the window
         window.display();
