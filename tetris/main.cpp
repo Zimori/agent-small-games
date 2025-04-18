@@ -211,6 +211,80 @@ int main()
                     rotateTetrimino(temp, grid);
                     if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
+                else if (event.key.code == sf::Keyboard::Space)
+                {
+                    // Hard drop effect
+                    Tetrimino drop = currentTetrimino;
+                    while (true) {
+                        Tetrimino next = drop;
+                        next.y += 1;
+                        if (!isValidPosition(next, grid)) break;
+                        drop = next;
+                    }
+                    // Optional: cool effect - flash the piece as it lands
+                    for (int flash = 0; flash < 3; ++flash) {
+                        window.clear(sf::Color::Black);
+                        // Draw grid
+                        for (int y = 0; y < GRID_HEIGHT; ++y) {
+                            for (int x = 0; x < GRID_WIDTH; ++x) {
+                                if (grid[y][x] != 0) {
+                                    sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
+                                    tile.setPosition(x * TILE_SIZE, y * TILE_SIZE);
+                                    tile.setFillColor(TETRIMINO_COLORS[grid[y][x] - 1]);
+                                    window.draw(tile);
+                                }
+                            }
+                        }
+                        // Draw the dropped Tetrimino with a flash color
+                        auto flashPositions = getBlockPositions(drop);
+                        for (const auto& pos : flashPositions) {
+                            if (pos.y >= 0) {
+                                sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
+                                tile.setPosition(pos.x * TILE_SIZE, pos.y * TILE_SIZE);
+                                tile.setFillColor(flash % 2 == 0 ? sf::Color::White : TETRIMINO_COLORS[drop.shapeIndex]);
+                                window.draw(tile);
+                            }
+                        }
+                        // Draw the rest of the UI (score panel, next piece, etc.)
+                        sf::RectangleShape scorePanel(sf::Vector2f(SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
+                        scorePanel.setPosition(GRID_WIDTH * TILE_SIZE, 0);
+                        scorePanel.setFillColor(sf::Color(30, 30, 30));
+                        window.draw(scorePanel);
+                        sf::Text scoreText;
+                        scoreText.setFont(font);
+                        scoreText.setString("Score: \n" + std::to_string(score));
+                        scoreText.setCharacterSize(24);
+                        scoreText.setFillColor(sf::Color::White);
+                        scoreText.setPosition(GRID_WIDTH * TILE_SIZE + 00, 30);
+                        window.draw(scoreText);
+                        sf::Text nextLabel;
+                        nextLabel.setFont(font);
+                        nextLabel.setString("Next:");
+                        nextLabel.setCharacterSize(20);
+                        nextLabel.setFillColor(sf::Color::White);
+                        nextLabel.setPosition(GRID_WIDTH * TILE_SIZE + 20, 150);
+                        window.draw(nextLabel);
+                        int offsetX = GRID_WIDTH * TILE_SIZE + 40;
+                        int offsetY = 200;
+                        for (int i = 0; i < 4; ++i) {
+                            int px = TETRIMINOS[nextTetrimino.shapeIndex][i] % 2;
+                            int py = TETRIMINOS[nextTetrimino.shapeIndex][i] / 2;
+                            sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 4, TILE_SIZE - 4));
+                            tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
+                            tile.setFillColor(TETRIMINO_COLORS[nextTetrimino.shapeIndex]);
+                            window.draw(tile);
+                        }
+                        window.display();
+                        sf::sleep(sf::milliseconds(40));
+                    }
+                    // Place the Tetrimino on the grid
+                    placeTetrimino(drop, grid);
+                    clearLines(grid);
+                    currentTetrimino = nextTetrimino;
+                    nextTetrimino = Tetrimino(std::rand() % 7);
+                    if (!isValidPosition(currentTetrimino, grid))
+                        window.close();
+                }
             }
         }
 
