@@ -171,6 +171,8 @@ int main()
     float fallDelay = 0.5f; // Time between automatic falls
     float fallTimer = 0.0f;
 
+    bool paused = false;
+
     // Main game loop
     while (window.isOpen())
     {
@@ -183,63 +185,69 @@ int main()
             }
             if (event.type == sf::Event::KeyPressed)
             {
+                if (event.key.code == sf::Keyboard::P)
+                {
+                    paused = !paused;
+                }
+                if (paused) continue;
                 Tetrimino temp = currentTetrimino;
                 if (event.key.code == sf::Keyboard::Left)
                 {
                     temp.x -= 1;
-                    if (isValidPosition(temp, grid))
-                        currentTetrimino = temp;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Right)
                 {
                     temp.x += 1;
-                    if (isValidPosition(temp, grid))
-                        currentTetrimino = temp;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Down)
                 {
                     temp.y += 1;
-                    if (isValidPosition(temp, grid))
-                        currentTetrimino = temp;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
                 else if (event.key.code == sf::Keyboard::Up)
                 {
                     rotateTetrimino(temp, grid);
-                    if (isValidPosition(temp, grid))
-                        currentTetrimino = temp;
+                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
                 }
             }
         }
 
-        // Handle automatic falling
-        fallTimer += clock.restart().asSeconds();
-        if (fallTimer >= fallDelay)
-        {
-            fallTimer = 0.0f;
-            Tetrimino temp = currentTetrimino;
-            temp.y += 1;
-            if (isValidPosition(temp, grid))
+        if (!paused) {
+            // Handle automatic falling
+            fallTimer += clock.restart().asSeconds();
+            if (fallTimer >= fallDelay)
             {
-                currentTetrimino = temp;
-            }
-            else
-            {
-                // Place the Tetrimino on the grid
-                placeTetrimino(currentTetrimino, grid);
-
-                // Clear completed lines
-                clearLines(grid);
-
-                // Move nextTetrimino to current, and generate a new nextTetrimino
-                currentTetrimino = nextTetrimino;
-                nextTetrimino = Tetrimino(std::rand() % 7);
-
-                // Check for game over
-                if (!isValidPosition(currentTetrimino, grid))
+                fallTimer = 0.0f;
+                Tetrimino temp = currentTetrimino;
+                temp.y += 1;
+                if (isValidPosition(temp, grid))
                 {
-                    window.close();
+                    currentTetrimino = temp;
+                }
+                else
+                {
+                    // Place the Tetrimino on the grid
+                    placeTetrimino(currentTetrimino, grid);
+
+                    // Clear completed lines
+                    clearLines(grid);
+
+                    // Move nextTetrimino to current, and generate a new nextTetrimino
+                    currentTetrimino = nextTetrimino;
+                    nextTetrimino = Tetrimino(std::rand() % 7);
+
+                    // Check for game over
+                    if (!isValidPosition(currentTetrimino, grid))
+                    {
+                        window.close();
+                    }
                 }
             }
+        } else {
+            // If paused, reset the clock to avoid time jump
+            clock.restart();
         }
 
         // Clear the window
@@ -309,6 +317,26 @@ int main()
             tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
             tile.setFillColor(TETRIMINO_COLORS[nextTetrimino.shapeIndex]);
             window.draw(tile);
+        }
+
+        // Draw pause overlay if paused
+        if (paused) {
+            sf::RectangleShape overlay(sf::Vector2f(GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
+            overlay.setFillColor(sf::Color(0, 0, 0, 120));
+            overlay.setPosition(0, 0);
+            window.draw(overlay);
+
+            sf::Text pauseText;
+            pauseText.setFont(font);
+            pauseText.setString("PAUSE");
+            pauseText.setCharacterSize(48);
+            pauseText.setFillColor(sf::Color::White);
+            pauseText.setStyle(sf::Text::Bold);
+            // Center the text in the window
+            sf::FloatRect textRect = pauseText.getLocalBounds();
+            pauseText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+            pauseText.setPosition((GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH) / 2.0f, GRID_HEIGHT * TILE_SIZE / 2.0f);
+            window.draw(pauseText);
         }
 
         // Display the window
