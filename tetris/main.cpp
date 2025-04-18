@@ -167,6 +167,9 @@ int main()
     Tetrimino currentTetrimino(std::rand() % 7);
     Tetrimino nextTetrimino(std::rand() % 7);
 
+    Tetrimino* heldTetrimino = nullptr;
+    bool canHold = true;
+
     sf::Clock clock;
     float fallDelay = 0.5f; // Time between automatic falls
     float fallTimer = 0.0f;
@@ -299,6 +302,19 @@ int main()
                     if (!isValidPosition(currentTetrimino, grid))
                         gameOver = true;
                 }
+                if (!gameOver && !paused && event.key.code == sf::Keyboard::C && canHold) {
+                    if (!heldTetrimino) {
+                        heldTetrimino = new Tetrimino(currentTetrimino.shapeIndex);
+                        currentTetrimino = nextTetrimino;
+                        nextTetrimino = Tetrimino(std::rand() % 7);
+                    } else {
+                        std::swap(currentTetrimino.shapeIndex, heldTetrimino->shapeIndex);
+                        currentTetrimino.rotation = 0;
+                        currentTetrimino.x = GRID_WIDTH / 2 - 1;
+                        currentTetrimino.y = 0;
+                    }
+                    canHold = false;
+                }
             }
         }
 
@@ -331,6 +347,7 @@ int main()
                     {
                         gameOver = true;
                     }
+                    canHold = true;
                 }
             }
         } else if (paused) {
@@ -407,6 +424,27 @@ int main()
             window.draw(tile);
         }
 
+        // Draw the hold panel
+        sf::Text holdLabel;
+        holdLabel.setFont(font);
+        holdLabel.setString("Hold:");
+        holdLabel.setCharacterSize(20);
+        holdLabel.setFillColor(sf::Color::White);
+        holdLabel.setPosition(GRID_WIDTH * TILE_SIZE + 20, 320);
+        window.draw(holdLabel);
+        if (heldTetrimino) {
+            int offsetX = GRID_WIDTH * TILE_SIZE + 40;
+            int offsetY = 350;
+            for (int i = 0; i < 4; ++i) {
+                int px = TETRIMINOS[heldTetrimino->shapeIndex][i] % 2;
+                int py = TETRIMINOS[heldTetrimino->shapeIndex][i] / 2;
+                sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 4, TILE_SIZE - 4));
+                tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
+                tile.setFillColor(TETRIMINO_COLORS[heldTetrimino->shapeIndex]);
+                window.draw(tile);
+            }
+        }
+
         // Draw pause overlay if paused
         if (paused) {
             sf::RectangleShape overlay(sf::Vector2f(GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
@@ -464,6 +502,8 @@ int main()
         // Display the window
         window.display();
     }
+
+    if (heldTetrimino) delete heldTetrimino;
 
     return 0;
 }
