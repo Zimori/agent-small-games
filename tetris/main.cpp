@@ -143,6 +143,109 @@ void clearLines(std::vector<std::vector<int>> &grid)
     }
 }
 
+// Helper to draw the side panel (score, next, hold)
+void drawSidePanel(sf::RenderWindow& window, sf::Font& font, int score, const Tetrimino& nextTetrimino, Tetrimino* heldTetrimino) {
+    const int SCORE_PANEL_WIDTH = 150;
+    const int panelTop = 20;
+    const int scoreBoxHeight = 60;
+    const int bigBoxHeight = 170;
+    const int boxSpacing = 30;
+    const int scoreBoxY = panelTop;
+    const int nextBoxY = scoreBoxY + scoreBoxHeight + boxSpacing;
+    const int holdBoxY = nextBoxY + bigBoxHeight + boxSpacing;
+    const int boxWidth = SCORE_PANEL_WIDTH - 30;
+    const int pieceTileSize = TILE_SIZE - 1;
+
+    // Draw the score panel background
+    sf::RectangleShape scorePanel(sf::Vector2f(SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
+    scorePanel.setPosition(GRID_WIDTH * TILE_SIZE, 0);
+    scorePanel.setFillColor(sf::Color(25, 25, 25));
+    window.draw(scorePanel);
+
+    // Draw the SCORE box
+    sf::RectangleShape scoreBox(sf::Vector2f(boxWidth, scoreBoxHeight));
+    scoreBox.setPosition(GRID_WIDTH * TILE_SIZE + 15, scoreBoxY);
+    scoreBox.setFillColor(sf::Color(40, 40, 60));
+    scoreBox.setOutlineColor(sf::Color::White);
+    scoreBox.setOutlineThickness(2);
+    window.draw(scoreBox);
+    sf::Text scoreLabel;
+    scoreLabel.setFont(font);
+    scoreLabel.setString("SCORE");
+    scoreLabel.setCharacterSize(18);
+    scoreLabel.setFillColor(sf::Color(200, 200, 255));
+    scoreLabel.setStyle(sf::Text::Bold);
+    scoreLabel.setPosition(GRID_WIDTH * TILE_SIZE + 35, scoreBoxY + 6);
+    window.draw(scoreLabel);
+    sf::Text scoreValue;
+    scoreValue.setFont(font);
+    scoreValue.setString(std::to_string(score));
+    scoreValue.setCharacterSize(28);
+    scoreValue.setFillColor(sf::Color::White);
+    scoreValue.setStyle(sf::Text::Bold);
+    scoreValue.setPosition(GRID_WIDTH * TILE_SIZE + 35, scoreBoxY + 28);
+    window.draw(scoreValue);
+
+    // Draw the NEXT box
+    sf::RectangleShape nextBox(sf::Vector2f(boxWidth, bigBoxHeight));
+    nextBox.setPosition(GRID_WIDTH * TILE_SIZE + 15, nextBoxY);
+    nextBox.setFillColor(sf::Color(40, 60, 40));
+    nextBox.setOutlineColor(sf::Color::White);
+    nextBox.setOutlineThickness(2);
+    window.draw(nextBox);
+    sf::Text nextLabel;
+    nextLabel.setFont(font);
+    nextLabel.setString("NEXT");
+    nextLabel.setCharacterSize(18);
+    nextLabel.setFillColor(sf::Color(200, 255, 200));
+    nextLabel.setStyle(sf::Text::Bold);
+    nextLabel.setPosition(GRID_WIDTH * TILE_SIZE + 35, nextBoxY + 6);
+    window.draw(nextLabel);
+    // Center the next piece in the box, but move it higher
+    int nextBoxCenterX = GRID_WIDTH * TILE_SIZE + 15 + boxWidth / 2;
+    int nextBoxCenterY = nextBoxY + 55;
+    for (int i = 0; i < 4; ++i) {
+        int px = TETRIMINOS[nextTetrimino.shapeIndex][i] % 2;
+        int py = TETRIMINOS[nextTetrimino.shapeIndex][i] / 2;
+        sf::RectangleShape tile(sf::Vector2f(pieceTileSize, pieceTileSize));
+        tile.setPosition(nextBoxCenterX + (px - 1) * pieceTileSize, nextBoxCenterY + (py - 1) * pieceTileSize);
+        tile.setFillColor(TETRIMINO_COLORS[nextTetrimino.shapeIndex]);
+        tile.setOutlineColor(sf::Color::Black);
+        tile.setOutlineThickness(2);
+        window.draw(tile);
+    }
+
+    // Draw the HOLD box
+    sf::RectangleShape holdBox(sf::Vector2f(boxWidth, bigBoxHeight));
+    holdBox.setPosition(GRID_WIDTH * TILE_SIZE + 15, holdBoxY);
+    holdBox.setFillColor(sf::Color(60, 40, 40));
+    holdBox.setOutlineColor(sf::Color::White);
+    holdBox.setOutlineThickness(2);
+    window.draw(holdBox);
+    sf::Text holdLabel;
+    holdLabel.setFont(font);
+    holdLabel.setString("HOLD");
+    holdLabel.setCharacterSize(18);
+    holdLabel.setFillColor(sf::Color(255, 200, 200));
+    holdLabel.setStyle(sf::Text::Bold);
+    holdLabel.setPosition(GRID_WIDTH * TILE_SIZE + 35, holdBoxY + 6);
+    window.draw(holdLabel);
+    int holdBoxCenterX = GRID_WIDTH * TILE_SIZE + 15 + boxWidth / 2;
+    int holdBoxCenterY = holdBoxY + 55;
+    if (heldTetrimino) {
+        for (int i = 0; i < 4; ++i) {
+            int px = TETRIMINOS[heldTetrimino->shapeIndex][i] % 2;
+            int py = TETRIMINOS[heldTetrimino->shapeIndex][i] / 2;
+            sf::RectangleShape tile(sf::Vector2f(pieceTileSize, pieceTileSize));
+            tile.setPosition(holdBoxCenterX + (px - 1) * pieceTileSize, holdBoxCenterY + (py - 1) * pieceTileSize);
+            tile.setFillColor(TETRIMINO_COLORS[heldTetrimino->shapeIndex]);
+            tile.setOutlineColor(sf::Color::Black);
+            tile.setOutlineThickness(2);
+            window.draw(tile);
+        }
+    }
+}
+
 int main()
 {
     // Extend the window width to fit the score display
@@ -200,6 +303,7 @@ int main()
                         score = 0;
                         currentTetrimino = Tetrimino(std::rand() % 7);
                         nextTetrimino = Tetrimino(std::rand() % 7);
+                        if (heldTetrimino) { delete heldTetrimino; heldTetrimino = nullptr; } // Reset hold
                         gameOver = false;
                         paused = false;
                         clock.restart();
@@ -262,35 +366,7 @@ int main()
                                 window.draw(tile);
                             }
                         }
-                        // Draw the rest of the UI (score panel, next piece, etc.)
-                        sf::RectangleShape scorePanel(sf::Vector2f(SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
-                        scorePanel.setPosition(GRID_WIDTH * TILE_SIZE, 0);
-                        scorePanel.setFillColor(sf::Color(30, 30, 30));
-                        window.draw(scorePanel);
-                        sf::Text scoreText;
-                        scoreText.setFont(font);
-                        scoreText.setString("Score: \n" + std::to_string(score));
-                        scoreText.setCharacterSize(24);
-                        scoreText.setFillColor(sf::Color::White);
-                        scoreText.setPosition(GRID_WIDTH * TILE_SIZE + 00, 30);
-                        window.draw(scoreText);
-                        sf::Text nextLabel;
-                        nextLabel.setFont(font);
-                        nextLabel.setString("Next:");
-                        nextLabel.setCharacterSize(20);
-                        nextLabel.setFillColor(sf::Color::White);
-                        nextLabel.setPosition(GRID_WIDTH * TILE_SIZE + 20, 150);
-                        window.draw(nextLabel);
-                        int offsetX = GRID_WIDTH * TILE_SIZE + 40;
-                        int offsetY = 200;
-                        for (int i = 0; i < 4; ++i) {
-                            int px = TETRIMINOS[nextTetrimino.shapeIndex][i] % 2;
-                            int py = TETRIMINOS[nextTetrimino.shapeIndex][i] / 2;
-                            sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 4, TILE_SIZE - 4));
-                            tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
-                            tile.setFillColor(TETRIMINO_COLORS[nextTetrimino.shapeIndex]);
-                            window.draw(tile);
-                        }
+                        drawSidePanel(window, font, score, nextTetrimino, heldTetrimino);
                         window.display();
                         sf::sleep(sf::milliseconds(40));
                     }
@@ -386,64 +462,7 @@ int main()
             }
         }
 
-        // Draw the score panel background
-        sf::RectangleShape scorePanel(sf::Vector2f(SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
-        scorePanel.setPosition(GRID_WIDTH * TILE_SIZE, 0);
-        scorePanel.setFillColor(sf::Color(30, 30, 30));
-        window.draw(scorePanel);
-
-        // Draw the score
-        sf::Text scoreText;
-        scoreText.setFont(font);
-        // break line after "Score:", before the actual score
-        scoreText.setString("Score: \n" + std::to_string(score));
-        scoreText.setCharacterSize(24);
-        scoreText.setFillColor(sf::Color::White);
-        scoreText.setPosition(GRID_WIDTH * TILE_SIZE + 00, 30);
-        window.draw(scoreText);
-
-        // Draw the label for next piece
-        sf::Text nextLabel;
-        nextLabel.setFont(font);
-        nextLabel.setString("Next:");
-        nextLabel.setCharacterSize(20);
-        nextLabel.setFillColor(sf::Color::White);
-        nextLabel.setPosition(GRID_WIDTH * TILE_SIZE + 20, 150);
-        window.draw(nextLabel);
-
-        // Center the next piece in the panel
-        int offsetX = GRID_WIDTH * TILE_SIZE + 40;
-        int offsetY = 200;
-        for (int i = 0; i < 4; ++i)
-        {
-            int px = TETRIMINOS[nextTetrimino.shapeIndex][i] % 2;
-            int py = TETRIMINOS[nextTetrimino.shapeIndex][i] / 2;
-            sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 4, TILE_SIZE - 4));
-            tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
-            tile.setFillColor(TETRIMINO_COLORS[nextTetrimino.shapeIndex]);
-            window.draw(tile);
-        }
-
-        // Draw the hold panel
-        sf::Text holdLabel;
-        holdLabel.setFont(font);
-        holdLabel.setString("Hold:");
-        holdLabel.setCharacterSize(20);
-        holdLabel.setFillColor(sf::Color::White);
-        holdLabel.setPosition(GRID_WIDTH * TILE_SIZE + 20, 320);
-        window.draw(holdLabel);
-        if (heldTetrimino) {
-            int offsetX = GRID_WIDTH * TILE_SIZE + 40;
-            int offsetY = 350;
-            for (int i = 0; i < 4; ++i) {
-                int px = TETRIMINOS[heldTetrimino->shapeIndex][i] % 2;
-                int py = TETRIMINOS[heldTetrimino->shapeIndex][i] / 2;
-                sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 4, TILE_SIZE - 4));
-                tile.setPosition(offsetX + px * TILE_SIZE, offsetY + py * TILE_SIZE);
-                tile.setFillColor(TETRIMINO_COLORS[heldTetrimino->shapeIndex]);
-                window.draw(tile);
-            }
-        }
+        drawSidePanel(window, font, score, nextTetrimino, heldTetrimino);
 
         // Draw pause overlay if paused
         if (paused) {
