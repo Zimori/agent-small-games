@@ -246,6 +246,24 @@ void drawSidePanel(sf::RenderWindow& window, sf::Font& font, int score, const Te
     }
 }
 
+// Helper to get ghost piece position
+template<typename T>
+T getGhostTetrimino(const T& t, const std::vector<std::vector<int>>& grid) {
+    T ghost = t;
+    while (true) {
+        T next = ghost;
+        next.y += 1;
+        if (!isValidPosition(next, grid)) break;
+        ghost = next;
+    }
+    return ghost;
+}
+
+// Animation state for line clear
+std::vector<int> clearingLines; // y indices of lines being cleared
+float clearAnimTimer = 0.0f;
+const float CLEAR_ANIM_DURATION = 0.15f; // seconds - shorter animation duration for better flow
+
 int main()
 {
     // Extend the window width to fit the score display
@@ -279,6 +297,8 @@ int main()
 
     bool paused = false;
     bool gameOver = false;
+    clearingLines.clear();
+    clearAnimTimer = 0.0f;
 
     // Main game loop
     while (window.isOpen())
@@ -395,10 +415,42 @@ int main()
         }
 
         if (!paused && !gameOver) {
-            // Handle automatic falling
-            fallTimer += clock.restart().asSeconds();
-            if (fallTimer >= fallDelay)
-            {
+            float deltaTime = clock.restart().asSeconds();
+            fallTimer += deltaTime;
+            
+            // Update line clear animation if active
+            if (!clearingLines.empty()) {
+                clearAnimTimer += deltaTime;
+                if (clearAnimTimer >= CLEAR_ANIM_DURATION) {
+                    // Animation finished - clear lines and update score
+                    score += SCORE_TABLE.at((int)clearingLines.size());
+                    
+                    // Sort lines in descending order to remove from bottom to top
+                    std::sort(clearingLines.begin(), clearingLines.end(), std::greater<int>());
+                    
+                    // Remove each full line
+                    for (int y : clearingLines) {
+                        // Move all lines above down one row
+                        for (int row = y; row > 0; --row) {
+                            grid[row] = grid[row - 1];
+                        }
+                        grid[0] = std::vector<int>(GRID_WIDTH, 0);
+                    }
+                    
+                    // Reset animation state
+                    clearingLines.clear();
+                    clearAnimTimer = 0.0f;
+                    
+                    // Get next tetrimino
+                    currentTetrimino = nextTetrimino;
+                    nextTetrimino = Tetrimino(std::rand() % 7);
+                    if (!isValidPosition(currentTetrimino, grid))
+                        gameOver = true;
+                    canHold = true;
+                }
+            }
+            // Only process falling if not animating line clear
+            else if (fallTimer >= fallDelay) {
                 fallTimer = 0.0f;
                 Tetrimino temp = currentTetrimino;
                 temp.y += 1;
@@ -408,33 +460,38 @@ int main()
                 }
                 else
                 {
-                    // Place the Tetrimino on the grid
                     placeTetrimino(currentTetrimino, grid);
-
-                    // Clear completed lines
-                    clearLines(grid);
-
-                    // Move nextTetrimino to current, and generate a new nextTetrimino
-                    currentTetrimino = nextTetrimino;
-                    nextTetrimino = Tetrimino(std::rand() % 7);
-
-                    // Check for game over
-                    if (!isValidPosition(currentTetrimino, grid))
-                    {
-                        gameOver = true;
+                    // Detect lines to clear
+                    clearingLines.clear();
+                    for (int y = 0; y < GRID_HEIGHT; ++y) {
+                        bool full = true;
+                        for (int x = 0; x < GRID_WIDTH; ++x)
+                            if (grid[y][x] == 0) { full = false; break; }
+                        if (full) clearingLines.push_back(y);
                     }
-                    canHold = true;
+                    
+                    // If no lines to clear, continue with next piece
+                    if (clearingLines.empty()) {
+                        currentTetrimino = nextTetrimino;
+                        nextTetrimino = Tetrimino(std::rand() % 7);
+                        if (!isValidPosition(currentTetrimino, grid))
+                            gameOver = true;
+                        canHold = true;
+                    }
+                    // Otherwise start animation
+                    else {
+                        clearAnimTimer = 0.0f;
+                    }
                 }
             }
         } else if (paused) {
-            // If paused, reset the clock to avoid time jump
             clock.restart();
         }
 
         // Clear the window
         window.clear(sf::Color::Black);
 
-        // Draw the grid
+        // Draw the grid with line clear animation
         for (int y = 0; y < GRID_HEIGHT; ++y)
         {
             for (int x = 0; x < GRID_WIDTH; ++x)
@@ -443,7 +500,36 @@ int main()
                 {
                     sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
                     tile.setPosition(x * TILE_SIZE, y * TILE_SIZE);
-                    tile.setFillColor(TETRIMINO_COLORS[grid[y][x] - 1]);
+                    
+                    // Animate clearing lines - flash between white and the original color
+                    bool isClearing = std::find(clearingLines.begin(), clearingLines.end(), y) != clearingLines.end();
+                    if (isClearing) {
+                        float flashRate = 15.0f; // Flash speed
+                        bool flash = static_cast<int>(clearAnimTimer * flashRate) % 2 == 0;
+                        if (flash) {
+                            tile.setFillColor(sf::Color::White);
+                        } else {
+                            tile.setFillColor(TETRIMINO_COLORS[grid[y][x] - 1]);
+                        }
+                    } else {
+                        tile.setFillColor(TETRIMINO_COLORS[grid[y][x] - 1]);
+                    }
+                    window.draw(tile);
+                }
+            }
+        }
+
+        // Draw the ghost piece
+        if (!gameOver && clearingLines.empty()) {
+            Tetrimino ghost = getGhostTetrimino(currentTetrimino, grid);
+            auto ghostPositions = getBlockPositions(ghost);
+            for (const auto& pos : ghostPositions) {
+                if (pos.y >= 0) {
+                    sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
+                    tile.setPosition(pos.x * TILE_SIZE, pos.y * TILE_SIZE);
+                    tile.setFillColor(sf::Color(200, 200, 200, 80));
+                    tile.setOutlineColor(sf::Color(100, 100, 100, 120));
+                    tile.setOutlineThickness(2);
                     window.draw(tile);
                 }
             }
