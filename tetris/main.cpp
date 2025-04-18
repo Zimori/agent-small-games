@@ -172,6 +172,7 @@ int main()
     float fallTimer = 0.0f;
 
     bool paused = false;
+    bool gameOver = false;
 
     // Main game loop
     while (window.isOpen())
@@ -185,9 +186,22 @@ int main()
             }
             if (event.type == sf::Event::KeyPressed)
             {
-                if (event.key.code == sf::Keyboard::P)
+                if (event.key.code == sf::Keyboard::Escape)
                 {
-                    paused = !paused;
+                    window.close();
+                }
+                if (gameOver) {
+                    if (event.key.code == sf::Keyboard::R) {
+                        // Reset game state
+                        grid = std::vector<std::vector<int>>(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
+                        score = 0;
+                        currentTetrimino = Tetrimino(std::rand() % 7);
+                        nextTetrimino = Tetrimino(std::rand() % 7);
+                        gameOver = false;
+                        paused = false;
+                        clock.restart();
+                    }
+                    continue;
                 }
                 if (paused) continue;
                 Tetrimino temp = currentTetrimino;
@@ -283,12 +297,12 @@ int main()
                     currentTetrimino = nextTetrimino;
                     nextTetrimino = Tetrimino(std::rand() % 7);
                     if (!isValidPosition(currentTetrimino, grid))
-                        window.close();
+                        gameOver = true;
                 }
             }
         }
 
-        if (!paused) {
+        if (!paused && !gameOver) {
             // Handle automatic falling
             fallTimer += clock.restart().asSeconds();
             if (fallTimer >= fallDelay)
@@ -315,11 +329,11 @@ int main()
                     // Check for game over
                     if (!isValidPosition(currentTetrimino, grid))
                     {
-                        window.close();
+                        gameOver = true;
                     }
                 }
             }
-        } else {
+        } else if (paused) {
             // If paused, reset the clock to avoid time jump
             clock.restart();
         }
@@ -411,6 +425,40 @@ int main()
             pauseText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
             pauseText.setPosition((GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH) / 2.0f, GRID_HEIGHT * TILE_SIZE / 2.0f);
             window.draw(pauseText);
+        }
+
+        // Draw GAME OVER overlay if game is over
+        if (gameOver) {
+            sf::RectangleShape overlay(sf::Vector2f(GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH, GRID_HEIGHT * TILE_SIZE));
+            overlay.setFillColor(sf::Color(0, 0, 0, 180));
+            overlay.setPosition(0, 0);
+            window.draw(overlay);
+
+            // Draw GAME OVER text
+            sf::Text overText;
+            overText.setFont(font);
+            overText.setString("GAME OVER");
+            overText.setCharacterSize(48);
+            overText.setFillColor(sf::Color::Red);
+            overText.setStyle(sf::Text::Bold);
+            sf::FloatRect overRect = overText.getLocalBounds();
+            overText.setOrigin(overRect.left + overRect.width / 2.0f, overRect.top + overRect.height / 2.0f);
+            float centerX = (GRID_WIDTH * TILE_SIZE + SCORE_PANEL_WIDTH) / 2.0f;
+            float centerY = GRID_HEIGHT * TILE_SIZE / 2.0f;
+            overText.setPosition(centerX, centerY - 20);
+            window.draw(overText);
+
+            // Draw restart instruction text, smaller and just below GAME OVER
+            sf::Text restartText;
+            restartText.setFont(font);
+            restartText.setString("Press R to restart");
+            restartText.setCharacterSize(22);
+            restartText.setFillColor(sf::Color::White);
+            restartText.setStyle(sf::Text::Regular);
+            sf::FloatRect restartRect = restartText.getLocalBounds();
+            restartText.setOrigin(restartRect.left + restartRect.width / 2.0f, restartRect.top + restartRect.height / 2.0f);
+            restartText.setPosition(centerX, centerY + overRect.height / 2.0f + restartRect.height);
+            window.draw(restartText);
         }
 
         // Display the window
