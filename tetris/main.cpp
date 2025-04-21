@@ -6,11 +6,271 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int TILE_SIZE = 30;
 const std::string FONT_PATH = "extern/fonts/PixelatedElegance.ttf";
+
+// Add color mapping for Tetriminos - déplacé avant le système de particules
+const std::array<sf::Color, 7> TETRIMINO_COLORS = {
+    sf::Color::Cyan, sf::Color::Red, sf::Color::Green, sf::Color::Magenta,
+    sf::Color::Blue, sf::Color::Yellow, sf::Color::White};
+
+// Système de particules
+struct Particle {
+    sf::Vector2f position;
+    sf::Vector2f velocity;
+    sf::Color color;
+    float size;
+    float lifetime;
+    float maxLifetime;
+    
+    Particle(sf::Vector2f pos, sf::Vector2f vel, sf::Color col, float sz, float life) 
+        : position(pos), velocity(vel), color(col), size(sz), lifetime(life), maxLifetime(life) {}
+    
+    void update(float deltaTime) {
+        position += velocity * deltaTime;
+        lifetime -= deltaTime;
+        
+        // Ralentissement progressif
+        velocity *= 0.98f;
+        
+        // Diminution de la taille
+        size = std::max(0.5f, size * (lifetime / maxLifetime));
+    }
+    
+    bool isDead() const {
+        return lifetime <= 0;
+    }
+    
+    void draw(sf::RenderWindow& window) {
+        sf::CircleShape shape(size);
+        shape.setPosition(position);
+        shape.setOrigin(size, size);
+        
+        // Ajuster l'opacité en fonction de la durée de vie restante
+        sf::Color fadingColor = color;
+        fadingColor.a = static_cast<sf::Uint8>(255 * (lifetime / maxLifetime));
+        shape.setFillColor(fadingColor);
+        
+        window.draw(shape);
+    }
+};
+
+// Structure pour l'effet d'onde de choc
+struct ShockWave {
+    sf::Vector2f center;
+    float radius;
+    float maxRadius;
+    float thickness;
+    sf::Color color;
+    float lifetime;
+    float maxLifetime;
+    
+    ShockWave(sf::Vector2f pos, float maxRad, sf::Color col, float life)
+        : center(pos), radius(0), maxRadius(maxRad), thickness(3.0f), color(col), lifetime(life), maxLifetime(life) {}
+        
+    void update(float deltaTime) {
+        radius += (maxRadius / maxLifetime) * deltaTime * 2.5f; // Vitesse de propagation
+        lifetime -= deltaTime;
+        
+        // Réduire l'épaisseur avec le temps
+        thickness = std::max(0.5f, 3.0f * (lifetime / maxLifetime));
+    }
+    
+    bool isDead() const {
+        return lifetime <= 0 || radius >= maxRadius;
+    }
+    
+    void draw(sf::RenderWindow& window) {
+        sf::CircleShape shape(radius);
+        shape.setPosition(center.x - radius, center.y - radius);
+        shape.setOrigin(0, 0);
+        
+        // Ajuster l'opacité en fonction de la durée de vie restante
+        sf::Color wavingColor = color;
+        wavingColor.a = static_cast<sf::Uint8>(155 * (lifetime / maxLifetime));
+        shape.setFillColor(sf::Color::Transparent);
+        shape.setOutlineColor(wavingColor);
+        shape.setOutlineThickness(thickness);
+        
+        window.draw(shape);
+    }
+};
+
+class ParticleSystem {
+private:
+    std::vector<Particle> particles;
+    std::vector<ShockWave> shockWaves;
+    
+public:
+    void addParticle(const Particle& particle) {
+        particles.push_back(particle);
+    }
+    
+    void addShockWave(const ShockWave& wave) {
+        shockWaves.push_back(wave);
+    }
+    
+    void createExplosion(sf::Vector2f position, sf::Color color, int count, float speed) {
+        for (int i = 0; i < count; ++i) {
+            // Direction aléatoire
+            float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
+            float velocity = speed * (0.5f + static_cast<float>(rand() % 100) / 100.0f);
+            sf::Vector2f direction(std::cos(angle) * velocity, std::sin(angle) * velocity);
+            
+            // Légère variation de position
+            sf::Vector2f offset(
+                (static_cast<float>(rand() % 100) - 50.0f) / 50.0f * TILE_SIZE / 4.0f,
+                (static_cast<float>(rand() % 100) - 50.0f) / 50.0f * TILE_SIZE / 4.0f
+            );
+            
+            // Légère variation de couleur
+            sf::Color particleColor = color;
+            int variation = 30;
+            particleColor.r = std::min(255, std::max(0, particleColor.r + (rand() % variation - variation/2)));
+            particleColor.g = std::min(255, std::max(0, particleColor.g + (rand() % variation - variation/2)));
+            particleColor.b = std::min(255, std::max(0, particleColor.b + (rand() % variation - variation/2)));
+            
+            // Taille et durée de vie aléatoires
+            float size = 1.0f + static_cast<float>(rand() % 30) / 10.0f;
+            float lifetime = 0.5f + static_cast<float>(rand() % 100) / 100.0f;
+            
+            addParticle(Particle(position + offset, direction, particleColor, size, lifetime));
+        }
+    }
+    
+    void createLineExplosion(int lineY, const std::vector<std::vector<int>>& grid) {
+        for (int x = 0; x < GRID_WIDTH; ++x) {
+            if (grid[lineY][x] != 0) {
+                int colorIndex = grid[lineY][x] - 1;
+                sf::Color color = TETRIMINO_COLORS[colorIndex];
+                sf::Vector2f tileCenter(x * TILE_SIZE + TILE_SIZE / 2, lineY * TILE_SIZE + TILE_SIZE / 2);
+                createExplosion(tileCenter, color, 15, 100.0f); // 15 particules par tuile
+            }
+        }
+    }
+    
+    // Créer une onde de choc au centre d'une ligne
+    void createShockWaveForLine(int lineY, sf::Color color, float maxRadius = 300.0f) {
+        sf::Vector2f center(GRID_WIDTH * TILE_SIZE / 2, lineY * TILE_SIZE + TILE_SIZE / 2);
+        addShockWave(ShockWave(center, maxRadius, color, 0.7f));
+    }
+    
+    // Créer l'effet pour un effacement avec la touche espace
+    void createSpaceClearEffect(const std::vector<int>& lines, const std::vector<std::vector<int>>& grid) {
+        // Effet plus intense selon le nombre de lignes
+        float baseRadius = 150.0f;
+        float extraRadius = 75.0f * lines.size(); // Plus de lignes = plus grand rayon
+        float maxRadius = baseRadius + extraRadius;
+        
+        // Choisir une couleur basée sur le nombre de lignes
+        sf::Color waveColor;
+        switch(lines.size()) {
+            case 1: waveColor = sf::Color(255, 255, 200); break;    // Jaune clair
+            case 2: waveColor = sf::Color(255, 200, 100); break;    // Orange
+            case 3: waveColor = sf::Color(255, 100, 50); break;     // Orange-rouge
+            case 4: waveColor = sf::Color(255, 50, 255); break;     // Rose (Tetris)
+            default: waveColor = sf::Color::White;
+        }
+        
+        // Onde centrale - Grande onde pour l'effet global
+        float centerY = 0;
+        for (int lineY : lines) {
+            centerY += lineY;
+            
+            // Ajouter une onde par ligne pour un effet plus dynamique
+            sf::Vector2f lineCenter(GRID_WIDTH * TILE_SIZE / 2, lineY * TILE_SIZE + TILE_SIZE / 2);
+            addShockWave(ShockWave(lineCenter, maxRadius * 0.7f, waveColor, 0.6f));
+            
+            // Ajouter des particules pour chaque cellule dans la ligne
+            createLineExplosion(lineY, grid);
+        }
+        
+        // Onde centrale supplémentaire basée sur la moyenne des lignes
+        if (!lines.empty()) {
+            centerY /= lines.size(); // Position moyenne
+            sf::Vector2f mainCenter(GRID_WIDTH * TILE_SIZE / 2, centerY * TILE_SIZE + TILE_SIZE / 2);
+            
+            // Ajouter une onde de choc principale
+            addShockWave(ShockWave(mainCenter, maxRadius, waveColor, 0.8f));
+            
+            // Pour un Tetris (4 lignes), ajouter des effets supplémentaires
+            if (lines.size() == 4) {
+                // Ondes supplémentaires pour un Tetris
+                addShockWave(ShockWave(mainCenter, maxRadius * 1.2f, sf::Color(200, 50, 200), 1.0f));
+                
+                // Explosion massive de particules
+                for (int i = 0; i < 120; ++i) { // 120 particules supplémentaires
+                    float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
+                    float velocity = 150.0f * (0.5f + static_cast<float>(rand() % 100) / 100.0f);
+                    sf::Vector2f direction(std::cos(angle) * velocity, std::sin(angle) * velocity);
+                    
+                    sf::Vector2f offset(
+                        (static_cast<float>(rand() % 200) - 100.0f),
+                        (static_cast<float>(rand() % 200) - 100.0f)
+                    );
+                    
+                    // Variation de couleur pour l'effet "explosion"
+                    sf::Color particleColor;
+                    int colorChoice = rand() % 3;
+                    if (colorChoice == 0) particleColor = sf::Color(255, 50, 255); // Rose
+                    else if (colorChoice == 1) particleColor = sf::Color(255, 255, 200); // Jaune
+                    else particleColor = sf::Color(50, 200, 255); // Bleu clair
+                    
+                    float size = 2.0f + static_cast<float>(rand() % 40) / 10.0f;
+                    float lifetime = 0.7f + static_cast<float>(rand() % 100) / 100.0f;
+                    
+                    addParticle(Particle(mainCenter + offset, direction, particleColor, size, lifetime));
+                }
+            }
+        }
+    }
+    
+    void update(float deltaTime) {
+        // Mettre à jour toutes les particules
+        for (auto& particle : particles) {
+            particle.update(deltaTime);
+        }
+        
+        // Supprimer les particules mortes
+        particles.erase(
+            std::remove_if(particles.begin(), particles.end(), 
+                [](const Particle& p) { return p.isDead(); }),
+            particles.end()
+        );
+        
+        // Mettre à jour les ondes de choc
+        for (auto& wave : shockWaves) {
+            wave.update(deltaTime);
+        }
+        
+        // Supprimer les ondes de choc terminées
+        shockWaves.erase(
+            std::remove_if(shockWaves.begin(), shockWaves.end(),
+                [](const ShockWave& w) { return w.isDead(); }),
+            shockWaves.end()
+        );
+    }
+    
+    void draw(sf::RenderWindow& window) {
+        // Dessiner d'abord les ondes de choc (arrière-plan)
+        for (auto& wave : shockWaves) {
+            wave.draw(window);
+        }
+        
+        // Puis dessiner les particules (premier plan)
+        for (auto& particle : particles) {
+            particle.draw(window);
+        }
+    }
+    
+    bool isEmpty() const {
+        return particles.empty() && shockWaves.empty();
+    }
+};
 
 // Update Tetrimino shapes to include all standard Tetris pieces
 const std::array<std::array<int, 4>, 7> TETRIMINOS = {{
@@ -22,11 +282,6 @@ const std::array<std::array<int, 4>, 7> TETRIMINOS = {{
     {3, 5, 7, 6}, // J
     {2, 3, 4, 5}  // O
 }};
-
-// Add color mapping for Tetriminos
-const std::array<sf::Color, 7> TETRIMINO_COLORS = {
-    sf::Color::Cyan, sf::Color::Red, sf::Color::Green, sf::Color::Magenta,
-    sf::Color::Blue, sf::Color::Yellow, sf::Color::White};
 
 struct Tetrimino
 {
@@ -356,6 +611,7 @@ T getGhostTetrimino(const T& t, const std::vector<std::vector<int>>& grid) {
 std::vector<int> clearingLines; // y indices of lines being cleared
 float clearAnimTimer = 0.0f;
 const float CLEAR_ANIM_DURATION = 0.15f; // seconds - shorter animation duration for better flow
+bool isHardDropClear = false; // Indique si l'effacement a été déclenché par un hard drop
 
 int main()
 {
@@ -392,6 +648,9 @@ int main()
     bool gameOver = false;
     clearingLines.clear();
     clearAnimTimer = 0.0f;
+
+    // Création du système de particules
+    ParticleSystem particleSystem;
 
     // Main game loop
     while (window.isOpen())
@@ -509,6 +768,9 @@ int main()
                         if (full) clearingLines.push_back(y);
                     }
                     
+                    // Activer le flag pour indiquer que l'effacement a été déclenché par un hard drop
+                    isHardDropClear = !clearingLines.empty();
+                    
                     // Gérer les points pour les lignes complétées
                     if (!clearingLines.empty()) {
                         // Les points seront ajoutés après l'animation
@@ -536,13 +798,41 @@ int main()
             }
         }
 
+        // Clear the window
+        window.clear(sf::Color::Black);
+
+        // Calculer deltaTime même si on est en pause ou game over pour les animations de particules
+        float deltaTime = clock.restart().asSeconds();
+        
         if (!paused && !gameOver) {
-            float deltaTime = clock.restart().asSeconds();
             fallTimer += deltaTime;
             
             // Update line clear animation if active
             if (!clearingLines.empty()) {
                 clearAnimTimer += deltaTime;
+                
+                // Générer des effets pendant l'animation
+                if (clearAnimTimer < CLEAR_ANIM_DURATION / 2) {
+                    // Si l'effacement a été déclenché par un hard drop (espace), utiliser l'effet spécial
+                    if (isHardDropClear && clearAnimTimer < 0.05f) {
+                        // Créer l'effet spécial une seule fois au début de l'animation
+                        particleSystem.createSpaceClearEffect(clearingLines, grid);
+                        
+                        // Effet de ralenti (bullet time) pour les Tetris (4 lignes)
+                        if (clearingLines.size() == 4) {
+                            // Ralentir le temps pour un effet dramatique
+                            sf::sleep(sf::milliseconds(100));
+                        }
+                    }
+                    // Animation standard pour les autres modes d'effacement
+                    else if (!isHardDropClear) {
+                        // Génération de particules standard pour chaque ligne complète
+                        for (int lineY : clearingLines) {
+                            particleSystem.createLineExplosion(lineY, grid);
+                        }
+                    }
+                }
+                
                 if (clearAnimTimer >= CLEAR_ANIM_DURATION) {
                     // Animation finished - clear lines and update score
                     int numLinesCleared = clearingLines.size();
@@ -745,6 +1035,10 @@ int main()
             restartText.setPosition(centerX, centerY + overRect.height / 2.0f + restartRect.height);
             window.draw(restartText);
         }
+
+        // Mettre à jour et dessiner les particules
+        particleSystem.update(deltaTime);
+        particleSystem.draw(window);
 
         // Display the window
         window.display();
