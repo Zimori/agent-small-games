@@ -106,15 +106,47 @@ void rotateTetrimino(Tetrimino &tetrimino, const std::vector<std::vector<int>> &
     // If all fail, do not rotate
 }
 
+// Système de score amélioré
+struct ScoreSystem {
+    // Points pour les lignes complétées (selon niveau)
+    int getSingleLineClear(int level) { return 100 * level; }
+    int getDoubleLineClear(int level) { return 300 * level; }
+    int getTripleLineClear(int level) { return 500 * level; }
+    int getTetrisLineClear(int level) { return 800 * level; } // Bonus pour Tetris (4 lignes)
+    
+    // Points par cellule descendue
+    int getSoftDropPoints() { return 1; }     // 1 point par cellule en soft drop
+    int getHardDropPoints() { return 2; }     // 2 points par cellule en hard drop
+};
+
+// Variables globales pour le score et le niveau
+ScoreSystem scoreSystem;
+int level = 1;
+int linesCleared = 0;
+const int LINES_PER_LEVEL = 10;
+float fallDelay = 0.5f; 
+
 // Add scoring system
 int score = 0;
-const std::map<int, int> SCORE_TABLE = {
-    {1, 40}, {2, 100}, {3, 300}, {4, 1200}};
+
+// Remplacer la map SCORE_TABLE par la fonction suivante
+int getLinesClearPoints(int numLines, int level) {
+    switch(numLines) {
+        case 1: return scoreSystem.getSingleLineClear(level);
+        case 2: return scoreSystem.getDoubleLineClear(level);
+        case 3: return scoreSystem.getTripleLineClear(level);
+        case 4: return scoreSystem.getTetrisLineClear(level);
+        default: return 0;
+    }
+}
 
 // Add line clearing logic
 void clearLines(std::vector<std::vector<int>> &grid)
 {
-    int linesCleared = 0;
+    int linesCleared_local = 0;
+    std::vector<int> fullLines;  // Stocker les indices des lignes pleines
+
+    // Identifier d'abord toutes les lignes complètes
     for (int y = GRID_HEIGHT - 1; y >= 0; --y)
     {
         bool isFullLine = true;
@@ -128,18 +160,46 @@ void clearLines(std::vector<std::vector<int>> &grid)
         }
         if (isFullLine)
         {
-            for (int row = y; row > 0; --row)
-            {
-                grid[row] = grid[row - 1];
-            }
-            grid[0] = std::vector<int>(GRID_WIDTH, 0);
-            ++y; // Recheck the same row after shifting
-            ++linesCleared;
+            fullLines.push_back(y);  // Ajouter l'indice à la liste des lignes pleines
+            ++linesCleared_local;
         }
     }
-    if (linesCleared > 0)
+
+    // Supprimer toutes les lignes pleines trouvées (du bas vers le haut)
+    std::sort(fullLines.begin(), fullLines.end(), std::greater<int>());  // Trier en ordre décroissant
+    
+    // Créer une nouvelle grille temporaire sans les lignes complètes
+    std::vector<std::vector<int>> newGrid(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
+    int destRow = GRID_HEIGHT - 1;
+    
+    // Copier uniquement les lignes non complètes de bas en haut
+    for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
+        if (std::find(fullLines.begin(), fullLines.end(), y) == std::end(fullLines)) {
+            // Cette ligne n'est pas pleine, la copier
+            for (int x = 0; x < GRID_WIDTH; ++x) {
+                newGrid[destRow][x] = grid[y][x];
+            }
+            destRow--;
+        }
+        // Si c'est une ligne pleine, ne pas la copier (sauter)
+    }
+    
+    // Remplacer la grille d'origine par la nouvelle grille
+    grid = newGrid;
+
+    if (linesCleared_local > 0)
     {
-        score += SCORE_TABLE.at(linesCleared);
+        score += getLinesClearPoints(linesCleared_local, level);
+        
+        // Mettre à jour la variable globale pour le changement de niveau
+        linesCleared += linesCleared_local;
+        
+        // Vérifier si on doit augmenter le niveau
+        if (linesCleared >= level * LINES_PER_LEVEL) {
+            level++;
+            // Accélérer la vitesse de chute
+            fallDelay = std::max(0.05f, 0.5f - (level-1) * 0.05f);
+        }
     }
 }
 
@@ -244,6 +304,39 @@ void drawSidePanel(sf::RenderWindow& window, sf::Font& font, int score, const Te
             window.draw(tile);
         }
     }
+    
+    // Draw LEVEL box at the bottom of the screen
+    const int levelBoxHeight = 60;
+    const int levelBoxY = GRID_HEIGHT * TILE_SIZE - levelBoxHeight - 15; // Position en bas avec une marge
+    
+    sf::RectangleShape levelBox(sf::Vector2f(boxWidth, levelBoxHeight));
+    levelBox.setPosition(GRID_WIDTH * TILE_SIZE + 15, levelBoxY);
+    levelBox.setFillColor(sf::Color(60, 60, 80));
+    levelBox.setOutlineColor(sf::Color::White);
+    levelBox.setOutlineThickness(2);
+    window.draw(levelBox);
+    
+    sf::Text levelLabel;
+    levelLabel.setFont(font);
+    levelLabel.setString("LEVEL");
+    levelLabel.setCharacterSize(18);
+    levelLabel.setFillColor(sf::Color(220, 220, 255));
+    levelLabel.setStyle(sf::Text::Bold);
+    levelLabel.setPosition(GRID_WIDTH * TILE_SIZE + 35, levelBoxY + 6);
+    window.draw(levelLabel);
+    
+    sf::Text levelValue;
+    levelValue.setFont(font);
+    levelValue.setString(std::to_string(level));
+    levelValue.setCharacterSize(30);
+    levelValue.setFillColor(sf::Color::Yellow);
+    levelValue.setStyle(sf::Text::Bold);
+    
+    // Centrer le nombre du niveau
+    sf::FloatRect textRect = levelValue.getLocalBounds();
+    levelValue.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+    levelValue.setPosition(GRID_WIDTH * TILE_SIZE + 15 + boxWidth / 2, levelBoxY + 40);
+    window.draw(levelValue);
 }
 
 // Helper to get ghost piece position
@@ -321,6 +414,9 @@ int main()
                         // Reset game state
                         grid = std::vector<std::vector<int>>(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
                         score = 0;
+                        level = 1; // Réinitialiser le niveau
+                        linesCleared = 0; // Réinitialiser les lignes
+                        fallDelay = 0.5f; // Réinitialiser la vitesse
                         currentTetrimino = Tetrimino(std::rand() % 7);
                         nextTetrimino = Tetrimino(std::rand() % 7);
                         if (heldTetrimino) { delete heldTetrimino; heldTetrimino = nullptr; } // Reset hold
@@ -345,7 +441,11 @@ int main()
                 else if (event.key.code == sf::Keyboard::Down)
                 {
                     temp.y += 1;
-                    if (isValidPosition(temp, grid)) currentTetrimino = temp;
+                    if (isValidPosition(temp, grid)) {
+                        currentTetrimino = temp;
+                        // Points pour soft drop
+                        score += scoreSystem.getSoftDropPoints();
+                    }
                 }
                 else if (event.key.code == sf::Keyboard::Up)
                 {
@@ -356,12 +456,19 @@ int main()
                 {
                     // Hard drop effect
                     Tetrimino drop = currentTetrimino;
+                    int dropDistance = 0; // Compter la distance parcourue
+                    
                     while (true) {
                         Tetrimino next = drop;
                         next.y += 1;
                         if (!isValidPosition(next, grid)) break;
                         drop = next;
+                        dropDistance++; // Augmenter la distance
                     }
+                    
+                    // Ajouter des points pour le hard drop
+                    score += dropDistance * scoreSystem.getHardDropPoints();
+                    
                     // Optional: cool effect - flash the piece as it lands
                     for (int flash = 0; flash < 3; ++flash) {
                         window.clear(sf::Color::Black);
@@ -392,11 +499,26 @@ int main()
                     }
                     // Place the Tetrimino on the grid
                     placeTetrimino(drop, grid);
-                    clearLines(grid);
-                    currentTetrimino = nextTetrimino;
-                    nextTetrimino = Tetrimino(std::rand() % 7);
-                    if (!isValidPosition(currentTetrimino, grid))
-                        gameOver = true;
+                    
+                    // Detect lines to clear
+                    clearingLines.clear();
+                    for (int y = 0; y < GRID_HEIGHT; ++y) {
+                        bool full = true;
+                        for (int x = 0; x < GRID_WIDTH; ++x)
+                            if (grid[y][x] == 0) { full = false; break; }
+                        if (full) clearingLines.push_back(y);
+                    }
+                    
+                    // Gérer les points pour les lignes complétées
+                    if (!clearingLines.empty()) {
+                        // Les points seront ajoutés après l'animation
+                        clearAnimTimer = 0.0f;
+                    } else {
+                        currentTetrimino = nextTetrimino;
+                        nextTetrimino = Tetrimino(std::rand() % 7);
+                        if (!isValidPosition(currentTetrimino, grid))
+                            gameOver = true;
+                    }
                 }
                 if (!gameOver && !paused && event.key.code == sf::Keyboard::C && canHold) {
                     if (!heldTetrimino) {
@@ -423,19 +545,39 @@ int main()
                 clearAnimTimer += deltaTime;
                 if (clearAnimTimer >= CLEAR_ANIM_DURATION) {
                     // Animation finished - clear lines and update score
-                    score += SCORE_TABLE.at((int)clearingLines.size());
+                    int numLinesCleared = clearingLines.size();
                     
-                    // Sort lines in descending order to remove from bottom to top
-                    std::sort(clearingLines.begin(), clearingLines.end(), std::greater<int>());
+                    // Ajouter les points selon le nombre de lignes
+                    score += getLinesClearPoints(numLinesCleared, level);
                     
-                    // Remove each full line
-                    for (int y : clearingLines) {
-                        // Move all lines above down one row
-                        for (int row = y; row > 0; --row) {
-                            grid[row] = grid[row - 1];
-                        }
-                        grid[0] = std::vector<int>(GRID_WIDTH, 0);
+                    // Mettre à jour le total des lignes complétées
+                    linesCleared += numLinesCleared;
+                    
+                    // Vérifier si on doit augmenter le niveau
+                    if (linesCleared >= level * LINES_PER_LEVEL) {
+                        level++;
+                        // Accélérer la vitesse de chute
+                        fallDelay = std::max(0.05f, 0.5f - (level-1) * 0.05f);
                     }
+                    
+                    // Créer une nouvelle grille temporaire sans les lignes complètes
+                    std::vector<std::vector<int>> newGrid(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
+                    int destRow = GRID_HEIGHT - 1;
+                    
+                    // Copier uniquement les lignes non complètes de bas en haut
+                    for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
+                        if (std::find(clearingLines.begin(), clearingLines.end(), y) == std::end(clearingLines)) {
+                            // Cette ligne n'est pas pleine, la copier
+                            for (int x = 0; x < GRID_WIDTH; ++x) {
+                                newGrid[destRow][x] = grid[y][x];
+                            }
+                            destRow--;
+                        }
+                        // Si c'est une ligne pleine, ne pas la copier (sauter)
+                    }
+                    
+                    // Remplacer la grille d'origine par la nouvelle grille
+                    grid = newGrid;
                     
                     // Reset animation state
                     clearingLines.clear();
