@@ -159,76 +159,6 @@ public:
         addShockWave(ShockWave(center, maxRadius, color, 0.7f));
     }
     
-    // Créer l'effet pour un effacement avec la touche espace
-    void createSpaceClearEffect(const std::vector<int>& lines, const std::vector<std::vector<int>>& grid) {
-        // Effet plus intense selon le nombre de lignes
-        float baseRadius = 150.0f;
-        float extraRadius = 75.0f * lines.size(); // Plus de lignes = plus grand rayon
-        float maxRadius = baseRadius + extraRadius;
-        
-        // Choisir une couleur basée sur le nombre de lignes
-        sf::Color waveColor;
-        switch(lines.size()) {
-            case 1: waveColor = sf::Color(255, 255, 200); break;    // Jaune clair
-            case 2: waveColor = sf::Color(255, 200, 100); break;    // Orange
-            case 3: waveColor = sf::Color(255, 100, 50); break;     // Orange-rouge
-            case 4: waveColor = sf::Color(255, 50, 255); break;     // Rose (Tetris)
-            default: waveColor = sf::Color::White;
-        }
-        
-        // Onde centrale - Grande onde pour l'effet global
-        float centerY = 0;
-        for (int lineY : lines) {
-            centerY += lineY;
-            
-            // Ajouter une onde par ligne pour un effet plus dynamique
-            sf::Vector2f lineCenter(GRID_WIDTH * TILE_SIZE / 2, lineY * TILE_SIZE + TILE_SIZE / 2);
-            addShockWave(ShockWave(lineCenter, maxRadius * 0.7f, waveColor, 0.6f));
-            
-            // Ajouter des particules pour chaque cellule dans la ligne
-            createLineExplosion(lineY, grid);
-        }
-        
-        // Onde centrale supplémentaire basée sur la moyenne des lignes
-        if (!lines.empty()) {
-            centerY /= lines.size(); // Position moyenne
-            sf::Vector2f mainCenter(GRID_WIDTH * TILE_SIZE / 2, centerY * TILE_SIZE + TILE_SIZE / 2);
-            
-            // Ajouter une onde de choc principale
-            addShockWave(ShockWave(mainCenter, maxRadius, waveColor, 0.8f));
-            
-            // Pour un Tetris (4 lignes), ajouter des effets supplémentaires
-            if (lines.size() == 4) {
-                // Ondes supplémentaires pour un Tetris
-                addShockWave(ShockWave(mainCenter, maxRadius * 1.2f, sf::Color(200, 50, 200), 1.0f));
-                
-                // Explosion massive de particules
-                for (int i = 0; i < 120; ++i) { // 120 particules supplémentaires
-                    float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
-                    float velocity = 150.0f * (0.5f + static_cast<float>(rand() % 100) / 100.0f);
-                    sf::Vector2f direction(std::cos(angle) * velocity, std::sin(angle) * velocity);
-                    
-                    sf::Vector2f offset(
-                        (static_cast<float>(rand() % 200) - 100.0f),
-                        (static_cast<float>(rand() % 200) - 100.0f)
-                    );
-                    
-                    // Variation de couleur pour l'effet "explosion"
-                    sf::Color particleColor;
-                    int colorChoice = rand() % 3;
-                    if (colorChoice == 0) particleColor = sf::Color(255, 50, 255); // Rose
-                    else if (colorChoice == 1) particleColor = sf::Color(255, 255, 200); // Jaune
-                    else particleColor = sf::Color(50, 200, 255); // Bleu clair
-                    
-                    float size = 2.0f + static_cast<float>(rand() % 40) / 10.0f;
-                    float lifetime = 0.7f + static_cast<float>(rand() % 100) / 100.0f;
-                    
-                    addParticle(Particle(mainCenter + offset, direction, particleColor, size, lifetime));
-                }
-            }
-        }
-    }
-    
     void update(float deltaTime) {
         // Mettre à jour toutes les particules
         for (auto& particle : particles) {
@@ -611,7 +541,6 @@ T getGhostTetrimino(const T& t, const std::vector<std::vector<int>>& grid) {
 std::vector<int> clearingLines; // y indices of lines being cleared
 float clearAnimTimer = 0.0f;
 const float CLEAR_ANIM_DURATION = 0.15f; // seconds - shorter animation duration for better flow
-bool isHardDropClear = false; // Indique si l'effacement a été déclenché par un hard drop
 
 int main()
 {
@@ -728,34 +657,6 @@ int main()
                     // Ajouter des points pour le hard drop
                     score += dropDistance * scoreSystem.getHardDropPoints();
                     
-                    // Optional: cool effect - flash the piece as it lands
-                    for (int flash = 0; flash < 3; ++flash) {
-                        window.clear(sf::Color::Black);
-                        // Draw grid
-                        for (int y = 0; y < GRID_HEIGHT; ++y) {
-                            for (int x = 0; x < GRID_WIDTH; ++x) {
-                                if (grid[y][x] != 0) {
-                                    sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
-                                    tile.setPosition(x * TILE_SIZE, y * TILE_SIZE);
-                                    tile.setFillColor(TETRIMINO_COLORS[grid[y][x] - 1]);
-                                    window.draw(tile);
-                                }
-                            }
-                        }
-                        // Draw the dropped Tetrimino with a flash color
-                        auto flashPositions = getBlockPositions(drop);
-                        for (const auto& pos : flashPositions) {
-                            if (pos.y >= 0) {
-                                sf::RectangleShape tile(sf::Vector2f(TILE_SIZE - 1, TILE_SIZE - 1));
-                                tile.setPosition(pos.x * TILE_SIZE, pos.y * TILE_SIZE);
-                                tile.setFillColor(flash % 2 == 0 ? sf::Color::White : TETRIMINO_COLORS[drop.shapeIndex]);
-                                window.draw(tile);
-                            }
-                        }
-                        drawSidePanel(window, font, score, nextTetrimino, heldTetrimino);
-                        window.display();
-                        sf::sleep(sf::milliseconds(40));
-                    }
                     // Place the Tetrimino on the grid
                     placeTetrimino(drop, grid);
                     
@@ -767,9 +668,6 @@ int main()
                             if (grid[y][x] == 0) { full = false; break; }
                         if (full) clearingLines.push_back(y);
                     }
-                    
-                    // Activer le flag pour indiquer que l'effacement a été déclenché par un hard drop
-                    isHardDropClear = !clearingLines.empty();
                     
                     // Gérer les points pour les lignes complétées
                     if (!clearingLines.empty()) {
@@ -813,22 +711,51 @@ int main()
                 
                 // Générer des effets pendant l'animation
                 if (clearAnimTimer < CLEAR_ANIM_DURATION / 2) {
-                    // Si l'effacement a été déclenché par un hard drop (espace), utiliser l'effet spécial
-                    if (isHardDropClear && clearAnimTimer < 0.05f) {
-                        // Créer l'effet spécial une seule fois au début de l'animation
-                        particleSystem.createSpaceClearEffect(clearingLines, grid);
-                        
-                        // Effet de ralenti (bullet time) pour les Tetris (4 lignes)
-                        if (clearingLines.size() == 4) {
-                            // Ralentir le temps pour un effet dramatique
-                            sf::sleep(sf::milliseconds(100));
-                        }
-                    }
                     // Animation standard pour les autres modes d'effacement
-                    else if (!isHardDropClear) {
+                    if (clearAnimTimer < 0.05f) {
                         // Génération de particules standard pour chaque ligne complète
                         for (int lineY : clearingLines) {
                             particleSystem.createLineExplosion(lineY, grid);
+                        }
+                        
+                        // Ajouter des ondes de choc si plusieurs lignes sont complétées
+                        if (clearingLines.size() >= 2) {
+                            // Couleurs différentes selon le nombre de lignes
+                            sf::Color shockColor;
+                            float maxRadius = 200.0f;
+                            
+                            if (clearingLines.size() == 4) {
+                                // Tetris (4 lignes) - Onde dorée plus grande
+                                shockColor = sf::Color(255, 215, 0); // Or
+                                maxRadius = 400.0f;
+                            } else if (clearingLines.size() == 3) {
+                                // 3 lignes - Onde violette
+                                shockColor = sf::Color(200, 0, 255);
+                                maxRadius = 350.0f;
+                            } else {
+                                // 2 lignes - Onde bleue
+                                shockColor = sf::Color(30, 144, 255);
+                                maxRadius = 300.0f;
+                            }
+                            
+                            // Créer une onde pour chaque ligne, mais avec des tailles différentes pour un effet en cascade
+                            for (size_t i = 0; i < clearingLines.size(); i++) {
+                                float scaleFactor = 0.7f + (0.3f * (i / static_cast<float>(clearingLines.size())));
+                                particleSystem.createShockWaveForLine(clearingLines[i], shockColor, maxRadius * scaleFactor);
+                            }
+                            
+                            // Pour un Tetris, ajouter une onde de choc supplémentaire au centre
+                            if (clearingLines.size() == 4) {
+                                // Calculer le centre approximatif des 4 lignes
+                                int avgY = 0;
+                                for (int lineY : clearingLines) {
+                                    avgY += lineY;
+                                }
+                                avgY /= 4;
+                                
+                                sf::Vector2f centerPos(GRID_WIDTH * TILE_SIZE / 2, avgY * TILE_SIZE + TILE_SIZE / 2);
+                                particleSystem.addShockWave(ShockWave(centerPos, 450.0f, sf::Color::White, 1.0f));
+                            }
                         }
                     }
                 }
