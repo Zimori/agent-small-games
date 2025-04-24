@@ -12,8 +12,10 @@ const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int TILE_SIZE = 30;
 const std::string FONT_PATH = "extern/fonts/PixelatedElegance.ttf";
+const int LINES_PER_LEVEL = 10;
+const float CLEAR_ANIM_DURATION = 0.15f; // seconds
 
-// Add color mapping for Tetriminos - déplacé avant le système de particules
+// Couleurs des Tetriminos
 const std::array<sf::Color, 7> TETRIMINO_COLORS = {
     sf::Color::Cyan, sf::Color::Red, sf::Color::Green, sf::Color::Magenta,
     sf::Color::Blue, sf::Color::Yellow, sf::Color::White};
@@ -27,7 +29,7 @@ struct Particle {
     float lifetime;
     float maxLifetime;
     
-    Particle(sf::Vector2f pos, sf::Vector2f vel, sf::Color col, float sz, float life) 
+    Particle(sf::Vector2f pos, sf::Vector2f vel, sf::Color col, float sz = 2.0f, float life = 1.0f) 
         : position(pos), velocity(vel), color(col), size(sz), lifetime(life), maxLifetime(life) {}
     
     void update(float deltaTime) {
@@ -308,7 +310,6 @@ struct ScoreSystem {
 ScoreSystem scoreSystem;
 int level = 1;
 int linesCleared = 0;
-const int LINES_PER_LEVEL = 10;
 float fallDelay = 0.5f; 
 
 // Add scoring system
@@ -322,69 +323,6 @@ int getLinesClearPoints(int numLines, int level) {
         case 3: return scoreSystem.getTripleLineClear(level);
         case 4: return scoreSystem.getTetrisLineClear(level);
         default: return 0;
-    }
-}
-
-// Add line clearing logic
-void clearLines(std::vector<std::vector<int>> &grid)
-{
-    int linesCleared_local = 0;
-    std::vector<int> fullLines;  // Stocker les indices des lignes pleines
-
-    // Identifier d'abord toutes les lignes complètes
-    for (int y = GRID_HEIGHT - 1; y >= 0; --y)
-    {
-        bool isFullLine = true;
-        for (int x = 0; x < GRID_WIDTH; ++x)
-        {
-            if (grid[y][x] == 0)
-            {
-                isFullLine = false;
-                break;
-            }
-        }
-        if (isFullLine)
-        {
-            fullLines.push_back(y);  // Ajouter l'indice à la liste des lignes pleines
-            ++linesCleared_local;
-        }
-    }
-
-    // Supprimer toutes les lignes pleines trouvées (du bas vers le haut)
-    std::sort(fullLines.begin(), fullLines.end(), std::greater<int>());  // Trier en ordre décroissant
-    
-    // Créer une nouvelle grille temporaire sans les lignes complètes
-    std::vector<std::vector<int>> newGrid(GRID_HEIGHT, std::vector<int>(GRID_WIDTH, 0));
-    int destRow = GRID_HEIGHT - 1;
-    
-    // Copier uniquement les lignes non complètes de bas en haut
-    for (int y = GRID_HEIGHT - 1; y >= 0; --y) {
-        if (std::find(fullLines.begin(), fullLines.end(), y) == std::end(fullLines)) {
-            // Cette ligne n'est pas pleine, la copier
-            for (int x = 0; x < GRID_WIDTH; ++x) {
-                newGrid[destRow][x] = grid[y][x];
-            }
-            destRow--;
-        }
-        // Si c'est une ligne pleine, ne pas la copier (sauter)
-    }
-    
-    // Remplacer la grille d'origine par la nouvelle grille
-    grid = newGrid;
-
-    if (linesCleared_local > 0)
-    {
-        score += getLinesClearPoints(linesCleared_local, level);
-        
-        // Mettre à jour la variable globale pour le changement de niveau
-        linesCleared += linesCleared_local;
-        
-        // Vérifier si on doit augmenter le niveau
-        if (linesCleared >= level * LINES_PER_LEVEL) {
-            level++;
-            // Accélérer la vitesse de chute
-            fallDelay = std::max(0.05f, 0.5f - (level-1) * 0.05f);
-        }
     }
 }
 
@@ -540,7 +478,6 @@ T getGhostTetrimino(const T& t, const std::vector<std::vector<int>>& grid) {
 // Animation state for line clear
 std::vector<int> clearingLines; // y indices of lines being cleared
 float clearAnimTimer = 0.0f;
-const float CLEAR_ANIM_DURATION = 0.15f; // seconds - shorter animation duration for better flow
 
 int main()
 {
@@ -553,7 +490,7 @@ int main()
     if (!font.loadFromFile(FONT_PATH))
     {
         std::cerr << "Failed to load font from: " << FONT_PATH << "\n";
-        return -1; // Handle error if font fails to load
+        return -1;
     }
 
     // Initialize grid
@@ -562,15 +499,15 @@ int main()
     // Initialize random seed
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    // Create the first Tetrimino and the next one
+    // Création des tetriminos
     Tetrimino currentTetrimino(std::rand() % 7);
     Tetrimino nextTetrimino(std::rand() % 7);
 
     Tetrimino* heldTetrimino = nullptr;
     bool canHold = true;
+    // Variable holdUsedSincePlacement supprimée car non utilisée
 
     sf::Clock clock;
-    float fallDelay = 0.5f; // Time between automatic falls
     float fallTimer = 0.0f;
 
     bool paused = false;
@@ -678,6 +615,7 @@ int main()
                         nextTetrimino = Tetrimino(std::rand() % 7);
                         if (!isValidPosition(currentTetrimino, grid))
                             gameOver = true;
+                        canHold = true;  // Réactiver le hold pour la nouvelle pièce
                     }
                 }
                 if (!gameOver && !paused && event.key.code == sf::Keyboard::C && canHold) {
@@ -691,7 +629,7 @@ int main()
                         currentTetrimino.x = GRID_WIDTH / 2 - 1;
                         currentTetrimino.y = 0;
                     }
-                    canHold = false;
+                    canHold = false;  // Désactiver le hold jusqu'au prochain placement
                 }
             }
         }
@@ -805,7 +743,7 @@ int main()
                     nextTetrimino = Tetrimino(std::rand() % 7);
                     if (!isValidPosition(currentTetrimino, grid))
                         gameOver = true;
-                    canHold = true;
+                    canHold = true;  // Réactiver le hold pour la nouvelle pièce
                 }
             }
             // Only process falling if not animating line clear
@@ -835,7 +773,7 @@ int main()
                         nextTetrimino = Tetrimino(std::rand() % 7);
                         if (!isValidPosition(currentTetrimino, grid))
                             gameOver = true;
-                        canHold = true;
+                        canHold = true;  // Réactiver le hold pour la nouvelle pièce
                     }
                     // Otherwise start animation
                     else {
