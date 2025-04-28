@@ -15,10 +15,12 @@ The development process for these games follows a unique approach:
 - **Tetris**: A classic Tetris implementation with modern features including ghost pieces, piece holding, next piece preview, particle effects, and scoring system. [Learn more](tetris/README.md)
 - **Connect Four**: A two-player Connect Four game implemented in C++ using the SFML library for graphics. [Learn more](connect4/README.md)
 - **Tic Tac Toe**: A simple implementation of the classic Tic Tac Toe game. [Learn more](tic_tac_toe/README.md)
+- **Breakout**: A classic brick breaker game implemented in C++ using SFML. [Learn more](breakout/README.md)
 
 ## Tech Stack
 
 All games are built using:
+
 - **C++** as the primary programming language
 - **SFML** (Simple and Fast Multimedia Library) for graphics rendering
 - **Make** for build automation
@@ -26,12 +28,15 @@ All games are built using:
 ## How to Play
 
 ### Building the Games
+
 To build all games:
+
 ```bash
 make
 ```
 
 To build a specific game:
+
 ```bash
 make tetris    # Builds just the Tetris game
 make connect4  # Builds just Connect Four
@@ -39,7 +44,9 @@ make tic_tac_toe  # Builds just Tic Tac Toe
 ```
 
 ### Running the Games
+
 After building, you can find the executables in the `bin/` directory:
+
 ```bash
 ./bin/tetris
 ./bin/connect4
@@ -55,6 +62,7 @@ After building, you can find the executables in the `bin/` directory:
 ## Future Plans
 
 Planned additions and improvements include:
+
 - More games to expand the collection
 - Enhanced visual effects and animations
 - Sound effects and background music

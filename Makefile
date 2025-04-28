@@ -12,19 +12,22 @@ BIN_DIR = ./bin
 TIC_TAC_TOE_SRC = tic_tac_toe/main.cpp
 CONNECT4_SRC = connect4/main.cpp
 TETRIS_SRC = tetris/main.cpp
+BREAKOUT_SRC = breakout/main.cpp
 
 # Object files
 TIC_TAC_TOE_OBJ = $(BUILD_DIR)/tic_tac_toe.o
 CONNECT4_OBJ = $(BUILD_DIR)/connect4.o
 TETRIS_OBJ = $(BUILD_DIR)/tetris.o
+BREAKOUT_OBJ = $(BUILD_DIR)/breakout.o
 
 # Update executable paths to be placed in the bin directory
 TIC_TAC_TOE_EXE = $(BIN_DIR)/tic_tac_toe
 CONNECT4_EXE = $(BIN_DIR)/connect4
 TETRIS_EXE = $(BIN_DIR)/tetris
+BREAKOUT_EXE = $(BIN_DIR)/breakout
 
 # Update targets to use the new paths
-all: $(TIC_TAC_TOE_EXE) $(CONNECT4_EXE) $(TETRIS_EXE)
+all: $(TIC_TAC_TOE_EXE) $(CONNECT4_EXE) $(TETRIS_EXE) $(BREAKOUT_EXE)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -41,6 +44,9 @@ $(CONNECT4_OBJ): $(CONNECT4_SRC) | $(BUILD_DIR)
 $(TETRIS_OBJ): $(TETRIS_SRC) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+$(BREAKOUT_OBJ): $(BREAKOUT_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 # Build executables
 $(TIC_TAC_TOE_EXE): $(TIC_TAC_TOE_OBJ) | $(BIN_DIR)
 	$(CXX) $< -o $@ $(LDFLAGS)
@@ -51,6 +57,9 @@ $(CONNECT4_EXE): $(CONNECT4_OBJ) | $(BIN_DIR)
 $(TETRIS_EXE): $(TETRIS_OBJ) | $(BIN_DIR)
 	$(CXX) $< -o $@ $(LDFLAGS)
 
+$(BREAKOUT_EXE): $(BREAKOUT_OBJ) | $(BIN_DIR)
+	$(CXX) $< -o $@ $(LDFLAGS)
+
 # Individual game targets
 
 tic_tac_toe: $(TIC_TAC_TOE_EXE)
@@ -59,8 +68,10 @@ connect4: $(CONNECT4_EXE)
 
 tetris: $(TETRIS_EXE)
 
+breakout: $(BREAKOUT_EXE)
+
 # Update clean target to remove executables from the bin directory
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
-.PHONY: all clean tic_tac_toe connect4 tetris
+.PHONY: all clean tic_tac_toe connect4 tetris breakout
