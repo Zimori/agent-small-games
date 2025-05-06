@@ -8,16 +8,16 @@
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
-const int BRICK_ROWS = 6;
-const int BRICK_COLS = 10;
-const int BRICK_WIDTH = 60;
-const int BRICK_HEIGHT = 20;
-const int BRICK_SPACING = 8;
+const int BRICK_ROWS = 4; // moins de lignes
+const int BRICK_COLS = 7; // moins de colonnes
+const int BRICK_WIDTH = 90; // plus large
+const int BRICK_HEIGHT = 32; // plus haut
+const int BRICK_SPACING = 12; // un peu plus d'espace
 const int PADDLE_WIDTH = 100;
 const int PADDLE_HEIGHT = 18;
-const float PADDLE_SPEED = 400.0f;
-const float BALL_RADIUS = 10.0f;
-const float BALL_SPEED = 320.0f;
+const float PADDLE_SPEED = 480.0f;
+const float BALL_RADIUS = 14.0f;
+const float BALL_SPEED = 420.0f; // vitesse augmentée
 const int LIVES = 3;
 const int MAX_LEVEL = 5;
 
@@ -546,7 +546,17 @@ int main() {
         }
 
         // Draw
-        window.clear(sf::Color(30, 30, 40));
+        window.clear();
+        sf::VertexArray background(sf::Quads, 4);
+        background[0].position = sf::Vector2f(0, 0);
+        background[1].position = sf::Vector2f(WINDOW_WIDTH, 0);
+        background[2].position = sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT);
+        background[3].position = sf::Vector2f(0, WINDOW_HEIGHT);
+        background[0].color = sf::Color(30, 30, 60);
+        background[1].color = sf::Color(40, 40, 80);
+        background[2].color = sf::Color(20, 20, 40);
+        background[3].color = sf::Color(10, 10, 20);
+        window.draw(background);
         // Bricks
         for (const auto& brick : bricks) {
             if (!brick.destroyed) {
