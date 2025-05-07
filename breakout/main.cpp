@@ -39,7 +39,7 @@ struct Brick {
     BrickType type = BrickType::Normal;
 };
 
-// Génère les briques pour un niveau donné
+// Synchronize the outline color with the falling power-up color
 void generateBricks(std::vector<Brick>& bricks, int level) {
     bricks.clear();
     int rows = BRICK_ROWS + (level - 1); // Plus de lignes à chaque niveau
@@ -66,7 +66,25 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
             if (r == 0) {
                 brick.type = BrickType::PowerUp;
                 brick.shape.setOutlineThickness(2);
-                brick.shape.setOutlineColor(sf::Color::Yellow);
+                // Assign unique outline colors for each power-up type
+                int powerUpType = std::rand() % 5;
+                switch (powerUpType) {
+                    case 0:
+                        brick.shape.setOutlineColor(sf::Color::Yellow); // Healing
+                        break;
+                    case 1:
+                        brick.shape.setOutlineColor(sf::Color::Red); // Shrink paddle
+                        break;
+                    case 2:
+                        brick.shape.setOutlineColor(sf::Color::Cyan); // Multi-ball
+                        break;
+                    case 3:
+                        brick.shape.setOutlineColor(sf::Color(100, 255, 100)); // Slow ball
+                        break;
+                    case 4:
+                        brick.shape.setOutlineColor(sf::Color(255, 100, 255)); // Fast ball
+                        break;
+                }
             } else {
                 brick.type = BrickType::Normal;
             }
@@ -75,77 +93,38 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
     }
 }
 
-// Ajout d'une fonction pour dessiner une icône sur une brique power-up
+// Update the drawPowerUpIcon function to correctly differentiate icons for each power-up type
 void drawPowerUpIcon(sf::RenderWindow& window, const Brick& brick) {
     if (brick.type != BrickType::PowerUp) return;
-    // Déterminer le type de power-up à partir de la couleur de la brique (même logique que lors du spawn)
+
     sf::Vector2f pos = brick.shape.getPosition();
     sf::Vector2f size = brick.shape.getSize();
-    // sf::Color c = brick.shape.getOutlineColor(); // supprimé car inutilisé
-    sf::Color fill = brick.shape.getFillColor();
-    // On devine le type par la couleur de remplissage
-    if (fill == sf::Color::Yellow) {
-        // Expand Paddle: flèche horizontale
-        sf::RectangleShape arrow(sf::Vector2f(size.x * 0.6f, 4));
-        arrow.setFillColor(sf::Color::White);
-        arrow.setOrigin(arrow.getSize().x / 2, 2);
-        arrow.setPosition(pos.x, pos.y);
-        window.draw(arrow);
-        sf::CircleShape left(5, 3); left.setRotation(90); left.setFillColor(sf::Color::White);
-        left.setOrigin(5, 5); left.setPosition(pos.x - size.x * 0.3f, pos.y);
-        window.draw(left);
-        sf::CircleShape right(5, 3); right.setRotation(-90); right.setFillColor(sf::Color::White);
-        right.setOrigin(5, 5); right.setPosition(pos.x + size.x * 0.3f, pos.y);
-        window.draw(right);
-    } else if (fill == sf::Color::Red) {
-        // Shrink Paddle: flèche horizontale vers l'intérieur
-        sf::RectangleShape arrow(sf::Vector2f(size.x * 0.3f, 4));
-        arrow.setFillColor(sf::Color::White);
-        arrow.setOrigin(arrow.getSize().x / 2, 2);
-        arrow.setPosition(pos.x, pos.y);
-        window.draw(arrow);
-        sf::CircleShape left(5, 3); left.setRotation(-90); left.setFillColor(sf::Color::White);
-        left.setOrigin(5, 5); left.setPosition(pos.x - size.x * 0.15f, pos.y);
-        window.draw(left);
-        sf::CircleShape right(5, 3); right.setRotation(90); right.setFillColor(sf::Color::White);
-        right.setOrigin(5, 5); right.setPosition(pos.x + size.x * 0.15f, pos.y);
-        window.draw(right);
-    } else if (fill == sf::Color::Cyan) {
-        // MultiBall: dessiner une petite balle
-        sf::CircleShape ballIcon(size.y * 0.22f);
-        ballIcon.setFillColor(sf::Color::White);
-        ballIcon.setOrigin(ballIcon.getRadius(), ballIcon.getRadius());
-        ballIcon.setPosition(pos.x, pos.y);
-        window.draw(ballIcon);
-        sf::CircleShape ballIcon2(size.y * 0.13f);
-        ballIcon2.setFillColor(sf::Color(100,255,255));
-        ballIcon2.setOrigin(ballIcon2.getRadius(), ballIcon2.getRadius());
-        ballIcon2.setPosition(pos.x + size.x * 0.18f, pos.y + size.y * 0.13f);
-        window.draw(ballIcon2);
-    } else if (fill == sf::Color(100,255,100)) {
-        // SlowBall: icône tortue (cercle + 2 pattes)
-        sf::CircleShape shell(size.y * 0.18f);
-        shell.setFillColor(sf::Color::White);
-        shell.setOrigin(shell.getRadius(), shell.getRadius());
-        shell.setPosition(pos.x, pos.y);
-        window.draw(shell);
-        sf::RectangleShape leg(sf::Vector2f(8, 3));
-        leg.setFillColor(sf::Color::White);
-        leg.setOrigin(4, 1.5f);
-        leg.setPosition(pos.x - size.x * 0.10f, pos.y + size.y * 0.10f);
-        window.draw(leg);
-        leg.setPosition(pos.x + size.x * 0.10f, pos.y + size.y * 0.10f);
-        window.draw(leg);
-    } else if (fill == sf::Color(255,100,255)) {
-        // FastBall: icône éclair (zigzag)
-        sf::VertexArray lightning(sf::LineStrip, 4);
-        lightning[0].position = pos + sf::Vector2f(-size.x * 0.13f, -size.y * 0.10f);
-        lightning[1].position = pos + sf::Vector2f(0, size.y * 0.10f);
-        lightning[2].position = pos + sf::Vector2f(size.x * 0.10f, -size.y * 0.10f);
-        lightning[3].position = pos + sf::Vector2f(0, size.y * 0.18f);
-        for (int i = 0; i < 4; ++i) lightning[i].color = sf::Color::White;
-        window.draw(lightning);
+
+    sf::Text icon;
+    sf::Font font;
+    if (!font.loadFromFile("extern/fonts/PixelatedElegance.ttf")) {
+        return; // Fallback if font fails to load
     }
+    icon.setFont(font);
+    icon.setCharacterSize(static_cast<unsigned int>(size.y * 0.6f));
+    icon.setFillColor(sf::Color::White);
+    icon.setStyle(sf::Text::Bold);
+    icon.setPosition(pos.x - size.x * 0.25f, pos.y - size.y * 0.4f);
+
+    // Determine the symbol based on the power-up type
+    if (brick.shape.getOutlineColor() == sf::Color::Yellow) {
+        icon.setString("+"); // Healing symbol
+    } else if (brick.shape.getOutlineColor() == sf::Color::Cyan) {
+        icon.setString("O"); // Multi-ball symbol
+    } else if (brick.shape.getOutlineColor() == sf::Color::Red) {
+        icon.setString("<>"); // Shrink paddle symbol (arrows pointing inward)
+    } else if (brick.shape.getOutlineColor() == sf::Color::Green) {
+        icon.setString("> <"); // Expand paddle symbol (arrows pointing outward)
+    } else {
+        icon.setString("?"); // Default symbol for unknown power-ups
+    }
+
+    window.draw(icon);
 }
 
 int main() {
@@ -319,28 +298,27 @@ int main() {
                                 switch (ptype) {
                                     case 0:
                                         pu.type = PowerUpType::ExpandPaddle;
-                                        pu.shape.setFillColor(sf::Color::Yellow);
+                                        pu.shape.setFillColor(brick.shape.getOutlineColor()); // Use the brick's outline color
                                         break;
                                     case 1:
                                         pu.type = PowerUpType::ShrinkPaddle;
-                                        pu.shape.setFillColor(sf::Color::Red);
+                                        pu.shape.setFillColor(brick.shape.getOutlineColor()); // Use the brick's outline color
                                         break;
                                     case 2:
                                         pu.type = PowerUpType::MultiBall;
-                                        pu.shape.setFillColor(sf::Color::Cyan);
+                                        pu.shape.setFillColor(brick.shape.getOutlineColor()); // Use the brick's outline color
                                         break;
                                     case 3:
                                         pu.type = PowerUpType::SlowBall;
-                                        pu.shape.setFillColor(sf::Color(100,255,100));
+                                        pu.shape.setFillColor(brick.shape.getOutlineColor()); // Use the brick's outline color
                                         break;
                                     case 4:
                                         pu.type = PowerUpType::FastBall;
-                                        pu.shape.setFillColor(sf::Color(255,100,255));
+                                        pu.shape.setFillColor(brick.shape.getOutlineColor()); // Use the brick's outline color
                                         break;
                                 }
                                 pu.shape.setSize(sf::Vector2f(28, 16));
-                                pu.shape.setOutlineThickness(2);
-                                pu.shape.setOutlineColor(sf::Color::White);
+                                pu.shape.setOutlineThickness(0); // Remove the outline for falling power-ups
                                 pu.shape.setOrigin(14, 8);
                                 pu.shape.setPosition(brick.shape.getPosition());
                                 pu.velocity = sf::Vector2f(0, 120.f);
@@ -562,10 +540,13 @@ int main() {
         background[3].color = sf::Color(10, 10, 20);
         window.draw(background);
         // Bricks
+        // Ajout d'une icône pour les briques spéciales
         for (const auto& brick : bricks) {
             if (!brick.destroyed) {
                 window.draw(brick.shape);
-                drawPowerUpIcon(window, brick);
+                if (brick.type == BrickType::PowerUp) {
+                    drawPowerUpIcon(window, brick); // Dessiner l'icône correspondant au power-up
+                }
             }
         }
         // PowerUps
