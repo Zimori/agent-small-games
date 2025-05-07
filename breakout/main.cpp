@@ -295,11 +295,15 @@ int main() {
                 // Paddle collision
                 if (ball.getGlobalBounds().intersects(paddle.getGlobalBounds())) {
                     float px = (ball.getPosition().x - paddle.getPosition().x) / (PADDLE_WIDTH / 2);
-                    float angle = px * 75 * 3.14159f / 180.f;
+                    px = std::clamp(px, -1.0f, 1.0f); // Limiter px pour éviter des angles extrêmes
+                    float angle = px * 60 * 3.14159f / 180.f; // Réduire l'angle maximal à 60 degrés
                     float speed = std::sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.y * ballVelocity.y);
                     ballVelocity.x = speed * std::sin(angle);
                     ballVelocity.y = -std::abs(speed * std::cos(angle));
-                    ball.setPosition(ball.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS - 1);
+
+                    // Ajuster légèrement la position pour éviter la "téléportation"
+                    float overlap = (paddle.getPosition().y - PADDLE_HEIGHT / 2) - (ball.getPosition().y + BALL_RADIUS);
+                    ball.move(0, overlap - 1); // Déplacer légèrement pour éviter un ajustement brutal
                 }
 
                 // Brick collisions
