@@ -41,6 +41,7 @@ To build a specific game:
 make tetris    # Builds just the Tetris game
 make connect4  # Builds just Connect Four
 make tic_tac_toe  # Builds just Tic Tac Toe
+make breakout   # Builds just Breakout
 ```
 
 ### Running the Games
@@ -51,6 +52,7 @@ After building, you can find the executables in the `bin/` directory:
 ./bin/tetris
 ./bin/connect4
 ./bin/tic_tac_toe
+./bin/breakout
 ```
 
 ## How It Works
