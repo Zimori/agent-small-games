@@ -280,6 +280,11 @@ int main() {
                     ballLaunched = false;
                     ballVelocity = sf::Vector2f(0, 0);
                     ball.setPosition(paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS);
+
+                    // Clear multiball instances
+                    extraBalls.clear();
+                    extraBallsVel.clear();
+
                     if (lives <= 0) gameOver = true;
                 }
 
