@@ -41,9 +41,8 @@ struct Brick {
     bool destroyed = false;
     int points = 50;
     BrickType type = BrickType::Normal;
+    float destructionTimer = 0.0f; // Timer pour l'animation de destruction
 };
-
-
 
 // Synchronize the outline color with the falling power-up color
 void generateBricks(std::vector<Brick>& bricks, int level) {
@@ -307,6 +306,7 @@ int main() {
                     if (!brick.destroyed && ball.getGlobalBounds().intersects(brick.shape.getGlobalBounds())) {
                         if (brick.type != BrickType::Indestructible) {
                             brick.destroyed = true;
+                            brick.destructionTimer = 0.5f; // Initialiser le timer de destruction
                             score += brick.points;
                             // Si brique powerup, spawn un powerup
                             // Ensure the power-up type is correctly assigned and activated based on the brick's outline color
@@ -526,6 +526,7 @@ int main() {
                     if (!brick.destroyed && extraBalls[i].getGlobalBounds().intersects(brick.shape.getGlobalBounds())) {
                         if (brick.type != BrickType::Indestructible) {
                             brick.destroyed = true;
+                            brick.destructionTimer = 0.5f; // Initialiser le timer de destruction
                             score += brick.points;
                         }
                         // Simple collision response
@@ -570,6 +571,23 @@ int main() {
                 if (brick.type == BrickType::PowerUp) {
                     drawPowerUpIcon(window, brick); // Dessiner l'icône correspondant au power-up
                 }
+            }
+        }
+        // Gestion des animations de destruction avec chute
+        for (auto& brick : bricks) {
+            if (brick.destroyed && brick.destructionTimer > 0.0f) {
+                brick.destructionTimer -= dt;
+                float scale = brick.destructionTimer / 0.5f; // Réduction d'échelle sur 0,5 seconde
+                brick.shape.setScale(scale, scale);
+                sf::Color fadeColor = brick.shape.getFillColor();
+                fadeColor.a = static_cast<sf::Uint8>(255 * scale); // Effet de fondu
+                brick.shape.setFillColor(fadeColor);
+
+                // Faire tomber la brique vers le bas
+                sf::Vector2f position = brick.shape.getPosition();
+                position.y += 100 * dt; // Vitesse de chute
+                brick.shape.setPosition(position);
+                window.draw(brick.shape);
             }
         }
         // PowerUps
