@@ -52,7 +52,7 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
     float offsetX = (WINDOW_WIDTH - (cols * (BRICK_WIDTH + BRICK_SPACING) - BRICK_SPACING)) / 2.0f;
     float offsetY = 60.0f;
     std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, 9);
+    std::uniform_int_distribution<int> dist(0, 4); // Augmenter la probabilité de briques PowerUp
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             // Pour varier la disposition :
