@@ -44,6 +44,13 @@ struct Brick {
     float destructionTimer = 0.0f; // Timer pour l'animation de destruction
 };
 
+// Nouvelle structure pour gérer toutes les balles
+struct Ball {
+    sf::CircleShape shape;
+    sf::Vector2f velocity;
+    bool launched = false;
+};
+
 // Synchronize the outline color with the falling power-up color
 void generateBricks(std::vector<Brick>& bricks, int level) {
     bricks.clear();
@@ -157,14 +164,6 @@ int main() {
     paddle.setOrigin(PADDLE_WIDTH / 2, PADDLE_HEIGHT / 2);
     paddle.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 40);
 
-    // Ball
-    sf::CircleShape ball(BALL_RADIUS);
-    ball.setFillColor(sf::Color(255, 200, 100));
-    ball.setOrigin(BALL_RADIUS, BALL_RADIUS);
-    ball.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
-    sf::Vector2f ballVelocity(0, 0);
-    bool ballLaunched = false;
-
     // Bricks
     std::vector<Brick> bricks;
     int score = 0;
@@ -176,8 +175,6 @@ int main() {
     generateBricks(bricks, level);
 
     std::vector<PowerUp> powerUps;
-    std::vector<sf::CircleShape> extraBalls; // Pour MultiBall
-    std::vector<sf::Vector2f> extraBallsVel;
     float paddleExpandTimer = 0.f;
     const float PADDLE_EXPAND_DURATION = 8.f;
     bool paddleExpanded = false;
@@ -210,6 +207,20 @@ int main() {
     levelText.setFillColor(sf::Color::Cyan);
     // levelText position will be set dynamiquement
 
+    std::vector<Ball> balls;
+    auto spawnBall = [&](sf::Vector2f pos, sf::Vector2f vel = {0,0}, bool launched = false) {
+        Ball b;
+        b.shape = sf::CircleShape(BALL_RADIUS);
+        b.shape.setFillColor(sf::Color(255, 200, 100));
+        b.shape.setOrigin(BALL_RADIUS, BALL_RADIUS);
+        b.shape.setPosition(pos);
+        b.velocity = vel;
+        b.launched = launched;
+        balls.push_back(b);
+    };
+    // Initialisation : une balle au centre
+    spawnBall({WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f});
+
     sf::Clock clock;
     while (window.isOpen()) {
         float dt = clock.restart().asSeconds();
@@ -229,16 +240,10 @@ int main() {
                         lives = LIVES;
                         gameOver = false;
                         gameWon = false;
-                        ball.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
-                        ballVelocity = sf::Vector2f(0, 0);
-                        ballLaunched = false;
+                        balls.clear();
+                        spawnBall({WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f});
                         paddle.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 40);
                     }
-                }
-                if (!ballLaunched && !gameOver && !gameWon && event.key.code == sf::Keyboard::Space) {
-                    float angle = (std::rand() % 120 + 30) * 3.14159f / 180.f;
-                    ballVelocity = sf::Vector2f(BALL_SPEED * std::cos(angle), BALL_SPEED * -std::sin(angle));
-                    ballLaunched = true;
                 }
             }
         }
@@ -253,90 +258,76 @@ int main() {
             paddle.setPosition(newX, paddle.getPosition().y);
 
             // Ball follows paddle before launch
-            if (!ballLaunched) {
-                ball.setPosition(paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS);
-            } else {
-                // Ball movement
-                ball.move(ballVelocity * dt);
-                sf::Vector2f pos = ball.getPosition();
-
+            for (auto& ball : balls) {
+                if (!ball.launched) {
+                    ball.shape.setPosition(paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS);
+                }
+            }
+            // Lancement de la balle
+            if (!balls.empty() && !balls[0].launched && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+                float angle = (std::rand() % 120 + 30) * 3.14159f / 180.f;
+                balls[0].velocity = sf::Vector2f(BALL_SPEED * std::cos(angle), BALL_SPEED * -std::sin(angle));
+                balls[0].launched = true;
+            }
+            // Mouvement et collisions pour chaque balle
+            for (size_t i = 0; i < balls.size(); ++i) {
+                auto& ball = balls[i];
+                if (!ball.launched) continue;
+                ball.shape.move(ball.velocity * dt);
+                sf::Vector2f pos = ball.shape.getPosition();
                 // Wall collisions
                 if (pos.x - BALL_RADIUS < 0) {
-                    ball.setPosition(BALL_RADIUS, pos.y);
-                    ballVelocity.x = -ballVelocity.x;
+                    ball.shape.setPosition(BALL_RADIUS, pos.y);
+                    ball.velocity.x = -ball.velocity.x;
                 }
                 if (pos.x + BALL_RADIUS > WINDOW_WIDTH) {
-                    ball.setPosition(WINDOW_WIDTH - BALL_RADIUS, pos.y);
-                    ballVelocity.x = -ballVelocity.x;
+                    ball.shape.setPosition(WINDOW_WIDTH - BALL_RADIUS, pos.y);
+                    ball.velocity.x = -ball.velocity.x;
                 }
                 if (pos.y - BALL_RADIUS < 0) {
-                    ball.setPosition(pos.x, BALL_RADIUS);
-                    ballVelocity.y = -ballVelocity.y;
+                    ball.shape.setPosition(pos.x, BALL_RADIUS);
+                    ball.velocity.y = -ball.velocity.y;
                 }
-                // Bottom (lose life)
+                // Bottom (lose ball)
                 if (pos.y - BALL_RADIUS > WINDOW_HEIGHT) {
-                    lives--;
-                    ballLaunched = false;
-                    ballVelocity = sf::Vector2f(0, 0);
-                    ball.setPosition(paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS);
-
-                    // Clear multiball instances
-                    extraBalls.clear();
-                    extraBallsVel.clear();
-
-                    if (lives <= 0) gameOver = true;
+                    balls.erase(balls.begin() + i);
+                    --i;
+                    continue;
                 }
-
                 // Paddle collision
-                if (ball.getGlobalBounds().intersects(paddle.getGlobalBounds())) {
-                    float px = (ball.getPosition().x - paddle.getPosition().x) / (PADDLE_WIDTH / 2);
-                    px = std::clamp(px, -1.0f, 1.0f); // Limiter px pour éviter des angles extrêmes
-                    float angle = px * 60 * 3.14159f / 180.f; // Réduire l'angle maximal à 60 degrés
-                    float speed = std::sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.y * ballVelocity.y);
-                    ballVelocity.x = speed * std::sin(angle);
-                    ballVelocity.y = -std::abs(speed * std::cos(angle));
-
-                    // Ajuster légèrement la position pour éviter la "téléportation"
-                    float overlap = (paddle.getPosition().y - PADDLE_HEIGHT / 2) - (ball.getPosition().y + BALL_RADIUS);
-                    ball.move(0, overlap - 1); // Déplacer légèrement pour éviter un ajustement brutal
+                if (ball.shape.getGlobalBounds().intersects(paddle.getGlobalBounds())) {
+                    float px = (ball.shape.getPosition().x - paddle.getPosition().x) / (PADDLE_WIDTH / 2);
+                    px = std::clamp(px, -1.0f, 1.0f);
+                    float angle = px * 60 * 3.14159f / 180.f;
+                    float speed = std::sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
+                    ball.velocity.x = speed * std::sin(angle);
+                    ball.velocity.y = -std::abs(speed * std::cos(angle));
+                    float overlap = (paddle.getPosition().y - PADDLE_HEIGHT / 2) - (ball.shape.getPosition().y + BALL_RADIUS);
+                    ball.shape.move(0, overlap - 1);
                 }
-
                 // Brick collisions
                 for (auto& brick : bricks) {
-                    if (!brick.destroyed && ball.getGlobalBounds().intersects(brick.shape.getGlobalBounds())) {
+                    if (!brick.destroyed && ball.shape.getGlobalBounds().intersects(brick.shape.getGlobalBounds())) {
                         if (brick.type != BrickType::Indestructible) {
                             brick.destroyed = true;
-                            brick.destructionTimer = 0.5f; // Initialiser le timer de destruction
+                            brick.destructionTimer = 0.5f;
                             score += brick.points;
-                            // Si brique powerup, spawn un powerup
-                            // Ensure the power-up type is correctly assigned and activated based on the brick's outline color
                             if (brick.type == BrickType::PowerUp) {
                                 PowerUp pu;
-                                pu.type = PowerUpType::None; // Default to None
-
-                                // Assign the power-up type based on the brick's outline color
-                                if (brick.shape.getOutlineColor() == sf::Color::Yellow) {
-                                    pu.type = PowerUpType::ExpandPaddle;
-                                } else if (brick.shape.getOutlineColor() == sf::Color::Red) {
-                                    pu.type = PowerUpType::ShrinkPaddle;
-                                } else if (brick.shape.getOutlineColor() == sf::Color::Cyan) {
-                                    pu.type = PowerUpType::MultiBall;
-                                } else if (brick.shape.getOutlineColor() == sf::Color(100, 255, 100)) {
-                                    pu.type = PowerUpType::SlowBall;
-                                } else if (brick.shape.getOutlineColor() == sf::Color(255, 100, 255)) {
-                                    pu.type = PowerUpType::FastBall;
-                                }
-
-                                // Activate the correct power-up
+                                pu.type = PowerUpType::None;
+                                if (brick.shape.getOutlineColor() == sf::Color::Yellow) pu.type = PowerUpType::ExpandPaddle;
+                                else if (brick.shape.getOutlineColor() == sf::Color::Red) pu.type = PowerUpType::ShrinkPaddle;
+                                else if (brick.shape.getOutlineColor() == sf::Color::Cyan) pu.type = PowerUpType::MultiBall;
+                                else if (brick.shape.getOutlineColor() == sf::Color(100, 255, 100)) pu.type = PowerUpType::SlowBall;
+                                else if (brick.shape.getOutlineColor() == sf::Color(255, 100, 255)) pu.type = PowerUpType::FastBall;
                                 if (pu.type == PowerUpType::MultiBall) {
-                                    sf::CircleShape newBall(BALL_RADIUS);
-                                    newBall.setFillColor(sf::Color::Cyan);
-                                    newBall.setOrigin(BALL_RADIUS, BALL_RADIUS);
-                                    newBall.setPosition(ball.getPosition());
-                                    extraBalls.push_back(newBall);
-                                    sf::Vector2f v = ballVelocity;
-                                    std::swap(v.x, v.y);
-                                    extraBallsVel.push_back(v);
+                                    // Ajoute une nouvelle balle identique à la première balle lancée
+                                    if (!balls.empty()) {
+                                        Ball newBall = balls[0];
+                                        newBall.velocity = sf::Vector2f(-balls[0].velocity.y, balls[0].velocity.x);
+                                        newBall.launched = true;
+                                        balls.push_back(newBall);
+                                    }
                                 } else if (pu.type != PowerUpType::None) {
                                     pu.shape.setFillColor(brick.shape.getOutlineColor());
                                     pu.shape.setSize(sf::Vector2f(28, 16));
@@ -351,7 +342,7 @@ int main() {
                         }
                         // Simple collision response
                         sf::FloatRect b = brick.shape.getGlobalBounds();
-                        sf::Vector2f ballPos = ball.getPosition();
+                        sf::Vector2f ballPos = ball.shape.getPosition();
                         float overlapLeft = (ballPos.x + BALL_RADIUS) - b.left;
                         float overlapRight = (b.left + b.width) - (ballPos.x - BALL_RADIUS);
                         float overlapTop = (ballPos.y + BALL_RADIUS) - b.top;
@@ -361,36 +352,26 @@ int main() {
                         float minOverlapX = ballFromLeft ? overlapLeft : overlapRight;
                         float minOverlapY = ballFromTop ? overlapTop : overlapBottom;
                         if (std::abs(minOverlapX) < std::abs(minOverlapY)) {
-                            ballVelocity.x = -ballVelocity.x;
+                            ball.velocity.x = -ball.velocity.x;
                         } else {
-                            ballVelocity.y = -ballVelocity.y;
+                            ball.velocity.y = -ball.velocity.y;
                         }
                         break;
                     }
                 }
-
-                // Win condition (niveau)
-                bool allDestroyed = true;
-                for (const auto& b : bricks) if (!b.destroyed) { allDestroyed = false; break; }
-                if (allDestroyed) {
-                    if (level < MAX_LEVEL) {
-                        level++;
-                        generateBricks(bricks, level);
-                        ballLaunched = false;
-                        ballVelocity = sf::Vector2f(0, 0);
-                        ball.setPosition(paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS);
-                        // Optionnel : petit message de passage de niveau
-                    } else {
-                        gameWon = true;
-                    }
+            }
+            // Si plus aucune balle, on perd une vie et on relance une balle
+            if (balls.empty()) {
+                lives--;
+                if (lives <= 0) gameOver = true;
+                else {
+                    spawnBall({paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS});
                 }
             }
-
             // PowerUps chute
             for (auto& pu : powerUps) {
                 if (!pu.active) continue;
                 pu.shape.move(pu.velocity * dt);
-                // Collision avec la raquette
                 if (pu.shape.getGlobalBounds().intersects(paddle.getGlobalBounds())) {
                     switch (pu.type) {
                         case PowerUpType::ExpandPaddle:
@@ -414,22 +395,17 @@ int main() {
                             }
                             break;
                         case PowerUpType::MultiBall:
-                            if (extraBalls.empty()) {
-                                sf::CircleShape newBall(BALL_RADIUS);
-                                newBall.setFillColor(sf::Color(100,255,255));
-                                newBall.setOrigin(BALL_RADIUS, BALL_RADIUS);
-                                newBall.setPosition(ball.getPosition());
-                                extraBalls.push_back(newBall);
-                                // Vitesse différente
-                                sf::Vector2f v = ballVelocity;
-                                std::swap(v.x, v.y);
-                                extraBallsVel.push_back(v);
+                            // Ajoute une nouvelle balle identique à la première balle lancée
+                            if (!balls.empty()) {
+                                Ball newBall = balls[0];
+                                newBall.velocity = sf::Vector2f(-balls[0].velocity.y, balls[0].velocity.x);
+                                newBall.launched = true;
+                                balls.push_back(newBall);
                             }
                             break;
                         case PowerUpType::SlowBall:
                             if (!ballSlowed) {
-                                ballVelocity *= 0.6f;
-                                for (auto& v : extraBallsVel) v *= 0.6f;
+                                for (auto& b : balls) b.velocity *= 0.6f;
                                 ballSlowed = true;
                                 slowBallTimer = SLOWBALL_DURATION;
                             } else {
@@ -438,8 +414,7 @@ int main() {
                             break;
                         case PowerUpType::FastBall:
                             if (!ballFaster) {
-                                ballVelocity *= 1.5f;
-                                for (auto& v : extraBallsVel) v *= 1.5f;
+                                for (auto& b : balls) b.velocity *= 1.5f;
                                 ballFaster = true;
                                 fastBallTimer = FASTBALL_DURATION;
                             } else {
@@ -474,79 +449,15 @@ int main() {
             if (ballSlowed) {
                 slowBallTimer -= dt;
                 if (slowBallTimer <= 0.f) {
-                    ballVelocity /= 0.6f;
-                    for (auto& v : extraBallsVel) v /= 0.6f;
+                    for (auto& b : balls) b.velocity /= 0.6f;
                     ballSlowed = false;
                 }
             }
             if (ballFaster) {
                 fastBallTimer -= dt;
                 if (fastBallTimer <= 0.f) {
-                    ballVelocity /= 1.5f;
-                    for (auto& v : extraBallsVel) v /= 1.5f;
+                    for (auto& b : balls) b.velocity /= 1.5f;
                     ballFaster = false;
-                }
-            }
-
-            // Gestion des extra balls (multi-balles)
-            for (size_t i = 0; i < extraBalls.size(); ++i) {
-                extraBalls[i].move(extraBallsVel[i] * dt);
-                sf::Vector2f pos = extraBalls[i].getPosition();
-                // Wall collisions
-                if (pos.x - BALL_RADIUS < 0) {
-                    extraBalls[i].setPosition(BALL_RADIUS, pos.y);
-                    extraBallsVel[i].x = -extraBallsVel[i].x;
-                }
-                if (pos.x + BALL_RADIUS > WINDOW_WIDTH) {
-                    extraBalls[i].setPosition(WINDOW_WIDTH - BALL_RADIUS, pos.y);
-                    extraBallsVel[i].x = -extraBallsVel[i].x;
-                }
-                if (pos.y - BALL_RADIUS < 0) {
-                    extraBalls[i].setPosition(pos.x, BALL_RADIUS);
-                    extraBallsVel[i].y = -extraBallsVel[i].y;
-                }
-                // Bottom (lose life for extra ball)
-                if (pos.y - BALL_RADIUS > WINDOW_HEIGHT) {
-                    extraBalls.erase(extraBalls.begin() + i);
-                    extraBallsVel.erase(extraBallsVel.begin() + i);
-                    --i;
-                    continue;
-                }
-                // Paddle collision
-                if (extraBalls[i].getGlobalBounds().intersects(paddle.getGlobalBounds())) {
-                    float px = (extraBalls[i].getPosition().x - paddle.getPosition().x) / (PADDLE_WIDTH / 2);
-                    float angle = px * 75 * 3.14159f / 180.f;
-                    float speed = std::sqrt(extraBallsVel[i].x * extraBallsVel[i].x + extraBallsVel[i].y * extraBallsVel[i].y);
-                    extraBallsVel[i].x = speed * std::sin(angle);
-                    extraBallsVel[i].y = -std::abs(speed * std::cos(angle));
-                    extraBalls[i].setPosition(extraBalls[i].getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS - 1);
-                }
-                // Brick collisions
-                for (auto& brick : bricks) {
-                    if (!brick.destroyed && extraBalls[i].getGlobalBounds().intersects(brick.shape.getGlobalBounds())) {
-                        if (brick.type != BrickType::Indestructible) {
-                            brick.destroyed = true;
-                            brick.destructionTimer = 0.5f; // Initialiser le timer de destruction
-                            score += brick.points;
-                        }
-                        // Simple collision response
-                        sf::FloatRect b = brick.shape.getGlobalBounds();
-                        sf::Vector2f ballPos = extraBalls[i].getPosition();
-                        float overlapLeft = (ballPos.x + BALL_RADIUS) - b.left;
-                        float overlapRight = (b.left + b.width) - (ballPos.x - BALL_RADIUS);
-                        float overlapTop = (ballPos.y + BALL_RADIUS) - b.top;
-                        float overlapBottom = (b.top + b.height) - (ballPos.y - BALL_RADIUS);
-                        bool ballFromLeft = std::abs(overlapLeft) < std::abs(overlapRight);
-                        bool ballFromTop = std::abs(overlapTop) < std::abs(overlapBottom);
-                        float minOverlapX = ballFromLeft ? overlapLeft : overlapRight;
-                        float minOverlapY = ballFromTop ? overlapTop : overlapBottom;
-                        if (std::abs(minOverlapX) < std::abs(minOverlapY)) {
-                            extraBallsVel[i].x = -extraBallsVel[i].x;
-                        } else {
-                            extraBallsVel[i].y = -extraBallsVel[i].y;
-                        }
-                        break;
-                    }
                 }
             }
         }
@@ -594,11 +505,9 @@ int main() {
         for (const auto& pu : powerUps) {
             if (pu.active) window.draw(pu.shape);
         }
-        // Extra balls
-        for (const auto& b : extraBalls) window.draw(b);
         // Paddle & Ball
         window.draw(paddle);
-        window.draw(ball);
+        for (const auto& ball : balls) window.draw(ball.shape);
         // Score & Lives & Level
         std::ostringstream oss;
         oss << "Score: " << score;
@@ -620,14 +529,6 @@ int main() {
         levelText.setPosition(WINDOW_WIDTH / 2.0f - levelBounds.width / 2.0f, 10);
         window.draw(levelText);
         // Info
-        if (!ballLaunched && !gameOver && !gameWon) {
-            infoText.setString("Press SPACE to launch the ball");
-            sf::FloatRect infoBounds = infoText.getLocalBounds();
-            infoText.setOrigin(infoBounds.left + infoBounds.width / 2.0f, infoBounds.top + infoBounds.height / 2.0f);
-            infoText.setPosition(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
-            infoText.setFillColor(sf::Color::Yellow);
-            window.draw(infoText);
-        }
         if (gameOver) {
             infoText.setString("GAME OVER\nPress R to restart");
             sf::FloatRect infoBounds = infoText.getLocalBounds();
@@ -642,6 +543,14 @@ int main() {
             infoText.setOrigin(infoBounds.left + infoBounds.width / 2.0f, infoBounds.top + infoBounds.height / 2.0f);
             infoText.setPosition(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
             infoText.setFillColor(sf::Color::Green);
+            window.draw(infoText);
+        }
+        if (!balls.empty() && !balls[0].launched && !gameOver && !gameWon) {
+            infoText.setString("Press SPACE to launch the ball");
+            sf::FloatRect infoBounds = infoText.getLocalBounds();
+            infoText.setOrigin(infoBounds.left + infoBounds.width / 2.0f, infoBounds.top + infoBounds.height / 2.0f);
+            infoText.setPosition(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f);
+            infoText.setFillColor(sf::Color::Yellow);
             window.draw(infoText);
         }
         window.display();
