@@ -10,16 +10,16 @@
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
-const int BRICK_ROWS = 4; // moins de lignes
-const int BRICK_COLS = 7; // moins de colonnes
-const int BRICK_WIDTH = 90; // plus large
-const int BRICK_HEIGHT = 32; // plus haut
-const int BRICK_SPACING = 12; // un peu plus d'espace
+const int BRICK_ROWS = 4;
+const int BRICK_COLS = 7;
+const int BRICK_WIDTH = 90;
+const int BRICK_HEIGHT = 32;
+const int BRICK_SPACING = 12;
 const int PADDLE_WIDTH = 100;
 const int PADDLE_HEIGHT = 18;
 const float PADDLE_SPEED = 480.0f;
-const float BALL_RADIUS = 14.0f;
-const float BALL_SPEED = 420.0f; // vitesse augmentée
+const float BALL_RADIUS = 9.0f;
+const float BALL_SPEED = 420.0f;
 const int LIVES = 3;
 const int MAX_LEVEL = 5;
 
@@ -54,17 +54,16 @@ struct Ball {
 // Synchronize the outline color with the falling power-up color
 void generateBricks(std::vector<Brick>& bricks, int level) {
     bricks.clear();
-    int rows = BRICK_ROWS + (level - 1); // Plus de lignes à chaque niveau
+    int rows = BRICK_ROWS + (level - 1);
     int cols = BRICK_COLS;
     float offsetX = (WINDOW_WIDTH - (cols * (BRICK_WIDTH + BRICK_SPACING) - BRICK_SPACING)) / 2.0f;
     float offsetY = 60.0f;
     std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, 4); // Augmenter la probabilité de briques PowerUp
+    std::uniform_int_distribution<int> dist(0, 4);
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            // Pour varier la disposition :
-            if (level >= 2 && (level % 2 == 0) && (i + j) % (2 + level % 3) == 0) continue; // trous
-            if (level >= 3 && (i == j || i + j == cols - 1)) continue; // diagonales vides
+            if (level >= 2 && (level % 2 == 0) && (i + j) % (2 + level % 3) == 0) continue;
+            if (level >= 3 && (i == j || i + j == cols - 1)) continue;
             Brick brick;
             brick.shape.setSize(sf::Vector2f(BRICK_WIDTH, BRICK_HEIGHT));
             brick.shape.setOrigin(BRICK_WIDTH / 2, BRICK_HEIGHT / 2);
@@ -73,29 +72,28 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
             brick.shape.setFillColor(sf::Color(100 + 25 * i, 100 + 10 * j, 200 - 20 * i + 10 * level));
             brick.points = 50 + 10 * i + 10 * (level - 1);
             brick.destroyed = false;
-            // 10% chance d'être une brique power-up
             int r = dist(rng);
             if (r == 0) {
                 int powerUpType = std::rand() % 5;
                 switch (powerUpType) {
                     case 0:
-                        brick.shape.setOutlineColor(sf::Color::Yellow); // Healing
+                        brick.shape.setOutlineColor(sf::Color::Yellow);
                         brick.type = BrickType::PowerUp;
                         break;
                     case 1:
-                        brick.shape.setOutlineColor(sf::Color::Red); // Shrink paddle
+                        brick.shape.setOutlineColor(sf::Color::Red);
                         brick.type = BrickType::PowerUp;
                         break;
                     case 2:
-                        brick.shape.setOutlineColor(sf::Color::Cyan); // Multi-ball
+                        brick.shape.setOutlineColor(sf::Color::Cyan);
                         brick.type = BrickType::PowerUp;
                         break;
                     case 3:
-                        brick.shape.setOutlineColor(sf::Color(100, 255, 100)); // Slow ball
+                        brick.shape.setOutlineColor(sf::Color(100, 255, 100));
                         brick.type = BrickType::PowerUp;
                         break;
                     case 4:
-                        brick.shape.setOutlineColor(sf::Color(255, 100, 255)); // Fast ball
+                        brick.shape.setOutlineColor(sf::Color(255, 100, 255));
                         brick.type = BrickType::PowerUp;
                         break;
                 }
@@ -195,20 +193,16 @@ int main() {
     scoreText.setFont(font);
     scoreText.setCharacterSize(22);
     scoreText.setFillColor(sf::Color::White);
-    // scoreText position will be set dynamically
     livesText.setFont(font);
     livesText.setCharacterSize(22);
     livesText.setFillColor(sf::Color::White);
-    // livesText position will be set dynamically
     infoText.setFont(font);
     infoText.setCharacterSize(32);
     infoText.setFillColor(sf::Color::Yellow);
     infoText.setStyle(sf::Text::Bold);
-    // infoText position will be set dynamiquement
     levelText.setFont(font);
     levelText.setCharacterSize(22);
     levelText.setFillColor(sf::Color::Cyan);
-    // levelText position will be set dynamiquement
 
     std::vector<Ball> balls;
     auto spawnBall = [&](sf::Vector2f pos, sf::Vector2f vel = {0,0}, bool launched = false) {
@@ -337,7 +331,7 @@ int main() {
                                     pu.shape.setOutlineThickness(0);
                                     pu.shape.setOrigin(14, 8);
                                     pu.shape.setPosition(brick.shape.getPosition());
-                                    pu.velocity = sf::Vector2f(0, 120.f);
+                                    pu.velocity = sf::Vector2f(0, 220.f); // vitesse augmentée
                                     pu.active = true;
                                     powerUps.push_back(pu);
                                 }
@@ -493,12 +487,11 @@ int main() {
         background[3].color = sf::Color(10, 10, 20);
         window.draw(background);
         // Bricks
-        // Ajout d'une icône pour les briques spéciales
         for (const auto& brick : bricks) {
             if (!brick.destroyed) {
                 window.draw(brick.shape);
                 if (brick.type == BrickType::PowerUp) {
-                    drawPowerUpIcon(window, brick); // Dessiner l'icône correspondant au power-up
+                    drawPowerUpIcon(window, brick);
                 }
             }
         }
@@ -506,13 +499,11 @@ int main() {
         for (auto& brick : bricks) {
             if (brick.destroyed && brick.destructionTimer > 0.0f) {
                 brick.destructionTimer -= dt;
-                float scale = brick.destructionTimer / 0.5f; // Réduction d'échelle sur 0,5 seconde
+                float scale = brick.destructionTimer / 0.5f;
                 brick.shape.setScale(scale, scale);
                 sf::Color fadeColor = brick.shape.getFillColor();
-                fadeColor.a = static_cast<sf::Uint8>(255 * scale); // Effet de fondu
+                fadeColor.a = static_cast<sf::Uint8>(255 * scale);
                 brick.shape.setFillColor(fadeColor);
-
-                // Faire tomber la brique vers le bas
                 sf::Vector2f position = brick.shape.getPosition();
                 position.y += 100 * dt; // Vitesse de chute
                 brick.shape.setPosition(position);
@@ -535,11 +526,9 @@ int main() {
         oss.str("");
         oss << "Lives: " << lives;
         livesText.setString(oss.str());
-        // Right-align livesText
         sf::FloatRect livesBounds = livesText.getLocalBounds();
         livesText.setPosition(WINDOW_WIDTH - livesBounds.width - 20, 10);
         window.draw(livesText);
-        // Affichage du niveau
         oss.str("");
         oss << "Level: " << level << "/" << MAX_LEVEL;
         levelText.setString(oss.str());
