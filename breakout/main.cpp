@@ -73,7 +73,7 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
             brick.points = 50 + 10 * i + 10 * (level - 1);
             brick.destroyed = false;
             int r = dist(rng);
-            if (r == 0) {
+            if (r == 0) { // pour les power-ups
                 int powerUpType = std::rand() % 5;
                 switch (powerUpType) {
                     case 0:
@@ -97,9 +97,10 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
                         brick.type = BrickType::PowerUp;
                         break;
                 }
-            } else if (r == 1) {
+            } else if (r == 1) { // pour les briques spéciales
                 brick.type = BrickType::Explosive;
                 brick.shape.setOutlineColor(sf::Color(255, 140, 0)); // Orange
+                brick.shape.setOutlineThickness(2);
             } else {
                 brick.type = BrickType::Normal;
             }
@@ -355,18 +356,25 @@ int main() {
                         }
                         // Gestion de l'explosion pour les briques explosives
                         if (brick.type == BrickType::Explosive) {
-                            // Détruire les briques voisines (haut, bas, gauche, droite)
+                            // Détruire les briques voisines (haut, bas, gauche, droite, diagonales)
                             for (auto& other : bricks) {
                                 if (&other == &brick || other.destroyed || other.type == BrickType::Indestructible) continue;
-                                sf::Vector2f bp = brick.shape.getPosition();
-                                sf::Vector2f op = other.shape.getPosition();
-                                float dx = std::abs(bp.x - op.x);
-                                float dy = std::abs(bp.y - op.y);
-                                if ((dx <= BRICK_WIDTH + 2 && dy < 2) || (dy <= BRICK_HEIGHT + 2 && dx < 2)) {
+                                // Vérification stricte de la grille (pas juste la distance)
+                                int row_b = std::round((brick.shape.getPosition().y - 60.0f) / (BRICK_HEIGHT + BRICK_SPACING));
+                                int col_b = std::round((brick.shape.getPosition().x - ((WINDOW_WIDTH - (BRICK_COLS * (BRICK_WIDTH + BRICK_SPACING) - BRICK_SPACING)) / 2.0f) - BRICK_WIDTH / 2) / (BRICK_WIDTH + BRICK_SPACING));
+                                int row_o = std::round((other.shape.getPosition().y - 60.0f) / (BRICK_HEIGHT + BRICK_SPACING));
+                                int col_o = std::round((other.shape.getPosition().x - ((WINDOW_WIDTH - (BRICK_COLS * (BRICK_WIDTH + BRICK_SPACING) - BRICK_SPACING)) / 2.0f) - BRICK_WIDTH / 2) / (BRICK_WIDTH + BRICK_SPACING));
+                                if (std::abs(row_b - row_o) <= 1 && std::abs(col_b - col_o) <= 1) {
                                     other.destroyed = true;
-                                    other.destructionTimer = 0.5f;
+                                    other.destructionTimer = 0.3f;
+                                    other.shape.setFillColor(sf::Color(255, 255, 180));
+                                    other.shape.setOutlineColor(sf::Color(255, 180, 0));
+                                    other.shape.setOutlineThickness(2);
                                 }
                             }
+                            brick.shape.setFillColor(sf::Color(255, 80, 0));
+                            brick.shape.setOutlineColor(sf::Color::White);
+                            brick.shape.setOutlineThickness(3);
                         }
                         break;
                     }
