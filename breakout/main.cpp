@@ -34,7 +34,7 @@ struct PowerUp {
     bool active = false;
 };
 
-enum class BrickType { Normal, PowerUp, Indestructible };
+enum class BrickType { Normal, PowerUp, Indestructible, Explosive };
 
 struct Brick {
     sf::RectangleShape shape;
@@ -99,6 +99,9 @@ void generateBricks(std::vector<Brick>& bricks, int level) {
                         brick.type = BrickType::PowerUp;
                         break;
                 }
+            } else if (r == 1) {
+                brick.type = BrickType::Explosive;
+                brick.shape.setOutlineColor(sf::Color(255, 140, 0)); // Orange
             } else {
                 brick.type = BrickType::Normal;
             }
@@ -355,6 +358,21 @@ int main() {
                             ball.velocity.x = -ball.velocity.x;
                         } else {
                             ball.velocity.y = -ball.velocity.y;
+                        }
+                        // Gestion de l'explosion pour les briques explosives
+                        if (brick.type == BrickType::Explosive) {
+                            // Détruire les briques voisines (haut, bas, gauche, droite)
+                            for (auto& other : bricks) {
+                                if (&other == &brick || other.destroyed || other.type == BrickType::Indestructible) continue;
+                                sf::Vector2f bp = brick.shape.getPosition();
+                                sf::Vector2f op = other.shape.getPosition();
+                                float dx = std::abs(bp.x - op.x);
+                                float dy = std::abs(bp.y - op.y);
+                                if ((dx <= BRICK_WIDTH + 2 && dy < 2) || (dy <= BRICK_HEIGHT + 2 && dx < 2)) {
+                                    other.destroyed = true;
+                                    other.destructionTimer = 0.5f;
+                                }
+                            }
                         }
                         break;
                     }
