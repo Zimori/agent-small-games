@@ -572,6 +572,91 @@ int main() {
             window.draw(infoText);
         }
         window.display();
+
+        // Correction de la condition de fin de niveau
+        bool allDestroyed = true;
+        for (const auto& b : bricks) {
+            if (!b.destroyed && b.destructionTimer <= 0.f) { allDestroyed = false; break; }
+        }
+        if (allDestroyed) {
+            if (level < MAX_LEVEL) {
+                level++;
+                generateBricks(bricks, level);
+                float dropStartY = -100.f;
+                float offsetY = 60.0f;
+                // Clear all balls BEFORE the animation
+                balls.clear();
+                // Prepare animation state for each brick
+                std::vector<float> animProgress(bricks.size(), 0.f);
+                float animDuration = 0.7f; // Duration of the drop animation (seconds)
+                bool dropping = true;
+                sf::Clock animClock;
+                while (dropping && window.isOpen()) {
+                    float dtDrop = animClock.restart().asSeconds();
+                    dropping = false;
+                    window.clear();
+                    // Redraw background
+                    sf::VertexArray background(sf::Quads, 4);
+                    background[0].position = sf::Vector2f(0, 0);
+                    background[1].position = sf::Vector2f(WINDOW_WIDTH, 0);
+                    background[2].position = sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT);
+                    background[3].position = sf::Vector2f(0, WINDOW_HEIGHT);
+                    background[0].color = sf::Color(30, 30, 60);
+                    background[1].color = sf::Color(40, 40, 80);
+                    background[2].color = sf::Color(20, 20, 40);
+                    background[3].color = sf::Color(10, 10, 20);
+                    window.draw(background);
+                    // Animate bricks with acceleration (ease-in)
+                    for (size_t i = 0; i < bricks.size(); ++i) {
+                        auto& brick = bricks[i];
+                        int row = i / BRICK_COLS;
+                        float target = offsetY + row * (BRICK_HEIGHT + BRICK_SPACING) + BRICK_HEIGHT / 2;
+                        animProgress[i] += dtDrop / animDuration;
+                        if (animProgress[i] < 1.f) dropping = true;
+                        float t = std::min(animProgress[i], 1.f);
+                        // Quadratic ease-in: y = start + (target - start) * t^2
+                        float y = dropStartY + (target - dropStartY) * (t * t);
+                        brick.shape.setPosition(brick.shape.getPosition().x, y);
+                        window.draw(brick.shape);
+                        if (brick.type == BrickType::PowerUp) drawPowerUpIcon(window, brick);
+                    }
+                    // Redraw paddle (static)
+                    window.draw(paddle);
+                    // Redraw UI (score, lives, level)
+                    std::ostringstream oss;
+                    oss << "Score: " << score;
+                    scoreText.setString(oss.str());
+                    scoreText.setPosition(20, 10);
+                    window.draw(scoreText);
+                    oss.str("");
+                    oss << "Lives: " << lives;
+                    livesText.setString(oss.str());
+                    sf::FloatRect livesBounds = livesText.getLocalBounds();
+                    livesText.setPosition(WINDOW_WIDTH - livesBounds.width - 20, 10);
+                    window.draw(livesText);
+                    oss.str("");
+                    oss << "Level: " << level << "/" << MAX_LEVEL;
+                    levelText.setString(oss.str());
+                    sf::FloatRect levelBounds = levelText.getLocalBounds();
+                    levelText.setPosition(WINDOW_WIDTH / 2.0f - levelBounds.width / 2.0f, 10);
+                    window.draw(levelText);
+                    window.display();
+                }
+                // Reset brick positions to their final location after the drop
+                for (size_t i = 0; i < bricks.size(); ++i) {
+                    int row = i / BRICK_COLS;
+                    int col = i % BRICK_COLS;
+                    bricks[i].shape.setPosition(
+                        (WINDOW_WIDTH - (BRICK_COLS * (BRICK_WIDTH + BRICK_SPACING) - BRICK_SPACING)) / 2.0f + col * (BRICK_WIDTH + BRICK_SPACING) + BRICK_WIDTH / 2,
+                        offsetY + row * (BRICK_HEIGHT + BRICK_SPACING) + BRICK_HEIGHT / 2
+                    );
+                }
+                // Spawn a new ball after the animation
+                spawnBall({paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS});
+            } else {
+                gameWon = true;
+            }
+        }
     }
     return 0;
 }
