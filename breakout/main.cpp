@@ -453,16 +453,19 @@ int main()
                         else if (brick.type == BrickType::MultiHit)
                         {
                             brick.hitsLeft--;
-                            // Changement de couleur selon coups restants
+                            // Flash effect: set color to white for a short time
+                            brick.shape.setFillColor(sf::Color::White);
+                            brick.destructionTimer = 0.12f; // Use destructionTimer as a generic animation timer
+                            // Changement de couleur selon coups restants (restored after flash)
                             if (brick.hitsLeft == 2)
                             {
-                                brick.shape.setFillColor(sf::Color(80, 180, 255));
-                                brick.shape.setOutlineColor(sf::Color(0, 120, 255));
+                                brick.points = 100;
+                                // color restored after flash
                             }
                             else if (brick.hitsLeft == 1)
                             {
-                                brick.shape.setFillColor(sf::Color(255, 200, 80));
-                                brick.shape.setOutlineColor(sf::Color(255, 120, 0));
+                                brick.points = 100;
+                                // color restored after flash
                             }
                             if (brick.hitsLeft <= 0)
                             {
@@ -750,6 +753,25 @@ int main()
                     position.y += 100 * dt; // Vitesse de chute
                     brick.shape.setPosition(position);
                     window.draw(brick.shape);
+                }
+                // Flash effect for multi-hit bricks (not destroyed)
+                else if (brick.type == BrickType::MultiHit && !brick.destroyed && brick.destructionTimer > 0.0f)
+                {
+                    brick.destructionTimer -= dt;
+                    if (brick.destructionTimer <= 0.0f)
+                    {
+                        // Restore color according to hitsLeft
+                        if (brick.hitsLeft == 2)
+                        {
+                            brick.shape.setFillColor(sf::Color(80, 180, 255));
+                            brick.shape.setOutlineColor(sf::Color(0, 120, 255));
+                        }
+                        else if (brick.hitsLeft == 1)
+                        {
+                            brick.shape.setFillColor(sf::Color(255, 200, 80));
+                            brick.shape.setOutlineColor(sf::Color(255, 120, 0));
+                        }
+                    }
                 }
             }
             // PowerUps
