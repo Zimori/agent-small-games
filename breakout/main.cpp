@@ -273,6 +273,7 @@ int main()
     paddle.setFillColor(sf::Color(200, 200, 255));
     paddle.setOrigin(PADDLE_WIDTH / 2, PADDLE_HEIGHT / 2);
     paddle.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 40);
+    float paddleFlashTimer = 0.f;
 
     // Bricks
     std::vector<Brick> bricks;
@@ -418,11 +419,10 @@ int main()
                     --i;
                     if (balls.empty()) {
                         lives--;
+                        paddleFlashTimer = 0.25f; // flash red for 0.25s
                         if (lives <= 0)
                             gameOver = true;
                         else {
-                            // Affiche un message et attend que le joueur appuie sur ESPACE pour relancer
-                            // On place une nouvelle balle non lancée sur la raquette
                             spawnBall({paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS});
                             balls.back().launched = false;
                         }
@@ -567,11 +567,13 @@ int main()
                 if (balls.empty())
                 {
                     lives--;
+                    paddleFlashTimer = 0.25f; // flash red for 0.25s
                     if (lives <= 0)
                         gameOver = true;
                     else
                     {
                         spawnBall({paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS});
+                        balls.back().launched = false;
                     }
                 }
                 // PowerUps chute
@@ -781,6 +783,12 @@ int main()
                     window.draw(pu.shape);
             }
             // Paddle & Ball
+            if (paddleFlashTimer > 0.f) {
+                paddleFlashTimer -= dt;
+                paddle.setFillColor(sf::Color(255, 60, 60));
+            } else {
+                paddle.setFillColor(sf::Color(200, 200, 255));
+            }
             window.draw(paddle);
             for (const auto &ball : balls)
                 window.draw(ball.shape);
