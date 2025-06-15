@@ -416,6 +416,17 @@ int main()
                 {
                     balls.erase(balls.begin() + i);
                     --i;
+                    if (balls.empty()) {
+                        lives--;
+                        if (lives <= 0)
+                            gameOver = true;
+                        else {
+                            // Affiche un message et attend que le joueur appuie sur ESPACE pour relancer
+                            // On place une nouvelle balle non lancée sur la raquette
+                            spawnBall({paddle.getPosition().x, paddle.getPosition().y - PADDLE_HEIGHT / 2 - BALL_RADIUS});
+                            balls.back().launched = false;
+                        }
+                    }
                     continue;
                 }
                 // Paddle collision
@@ -706,6 +717,21 @@ int main()
                     if (brick.type == BrickType::PowerUp)
                     {
                         drawPowerUpIcon(window, brick);
+                    }
+                    // Affiche le nombre de coups restants sur les briques multi-coups
+                    if (brick.type == BrickType::MultiHit && brick.hitsLeft > 0)
+                    {
+                        sf::Text hitsText;
+                        hitsText.setFont(font);
+                        hitsText.setCharacterSize(18);
+                        hitsText.setFillColor(sf::Color::Black);
+                        hitsText.setStyle(sf::Text::Bold);
+                        hitsText.setString(std::to_string(brick.hitsLeft));
+                        sf::FloatRect textBounds = hitsText.getLocalBounds();
+                        sf::Vector2f pos = brick.shape.getPosition();
+                        hitsText.setOrigin(textBounds.width / 2, textBounds.height / 2);
+                        hitsText.setPosition(pos.x, pos.y - 6);
+                        window.draw(hitsText);
                     }
                 }
             }
